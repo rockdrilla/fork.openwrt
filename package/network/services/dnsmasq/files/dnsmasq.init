@@ -865,8 +865,9 @@ dnsmasq_start()
 	CONFIGFILE="${BASECONFIGFILE}.${cfg}"
 	CONFIGFILE_TMP="${CONFIGFILE}.$$"
 	HOSTFILE="${BASEHOSTFILE}.${cfg}"
-	HOSTFILE_TMP="${HOSTFILE}.$$"
-	HOSTFILE_DIR="$(dirname "$HOSTFILE")"
+	HOSTFILE_NAME="$(basename ${HOSTFILE})"
+	HOSTFILE_DIR="$(dirname ${HOSTFILE})"
+	HOSTFILE_TMP="${HOSTFILE_DIR}.${HOSTFILE_NAME}.$$"
 	BASEDHCPSTAMPFILE_CFG="${BASEDHCPSTAMPFILE}.${cfg}"
 
 	# before we can call xappend
@@ -1000,8 +1001,8 @@ dnsmasq_start()
 		xappend "--addn-hosts=$HOSTFILE"
 		append EXTRA_MOUNT "$HOSTFILE"
 	else
-		xappend "--addn-hosts=$HOSTFILE_DIR"
-		append EXTRA_MOUNT "$HOSTFILE_DIR"
+		xappend "--hostsdir=$(dirname $HOSTFILE)"
+		append EXTRA_MOUNT "$(dirname $HOSTFILE)"
 	fi
 	config_list_foreach "$cfg" "addnhosts" append_addnhosts
 	config_list_foreach "$cfg" "bogusnxdomain" append_bogusnxdomain
@@ -1104,7 +1105,6 @@ dnsmasq_start()
 	dhcp_option_add "$cfg" "" 2
 
 	xappend "--dhcp-broadcast=tag:needs-broadcast"
-
 
 	config_get dnsmasqconfdir "$cfg" confdir "/tmp/dnsmasq.d"
 	xappend "--conf-dir=$dnsmasqconfdir"

@@ -53,6 +53,7 @@ HOST_CONFIGURE_ARGS = \
 	--with-system-zlib \
 	--with-zstd \
 	--enable-deterministic-archives \
+	$(if $(findstring mips,$(ARCH)),,--enable-default-hash-style=gnu) \
 	--enable-plugins \
 	--enable-lto \
 	--disable-gprofng \

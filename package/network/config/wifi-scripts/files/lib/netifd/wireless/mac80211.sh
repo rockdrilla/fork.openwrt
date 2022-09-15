@@ -966,7 +966,7 @@ mac80211_prepare_vif() {
 
 	json_select ..
 
-	[ "$mode" == "ap" ] && {
+	[ "$mode" = "ap" ] && {
 		[ -z "$wpa_psk_file" ] && hostapd_set_psk "$ifname"
 		[ -z "$vlan_file" ] && hostapd_set_vlan "$ifname"
 	}

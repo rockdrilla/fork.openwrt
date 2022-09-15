@@ -106,7 +106,7 @@ mac80211_add_capabilities() {
 		set -- $capab
 
 		[ "$(($4))" -gt 0 ] || continue
-		[ "$(($__mask & $2))" -eq "$((${3:-$2}))" ] || continue
+		[ "$((__mask & $2))" -eq "$((${3:-$2}))" ] || continue
 		__out="$__out[$1]"
 	done
 	IFS="$oifs"
@@ -166,7 +166,7 @@ mac80211_hostapd_setup_base() {
 		HT40*|VHT40|VHT80|VHT160|HE40|HE80|HE160)
 			case "$hwmode" in
 				a)
-					case "$(( (($channel / 4) + $chan_ofs) % 2 ))" in
+					case "$(( ((channel / 4) + chan_ofs) % 2 ))" in
 						1) ht_capab="[HT40+]";;
 						0) ht_capab="[HT40-]";;
 					esac
@@ -208,12 +208,12 @@ mac80211_hostapd_setup_base() {
 
 		ht_cap_mask=0
 		for cap in $(iw phy "$phy" info | grep 'Capabilities:' | cut -d: -f2); do
-			ht_cap_mask="$(($ht_cap_mask | $cap))"
+			ht_cap_mask="$((ht_cap_mask | cap))"
 		done
 
-		cap_rx_stbc=$((($ht_cap_mask >> 8) & 3))
+		cap_rx_stbc=$(((ht_cap_mask >> 8) & 3))
 		[ "$rx_stbc" -lt "$cap_rx_stbc" ] && cap_rx_stbc="$rx_stbc"
-		ht_cap_mask="$(( ($ht_cap_mask & ~(0x300)) | ($cap_rx_stbc << 8) ))"
+		ht_cap_mask="$(( (ht_cap_mask & ~(0x300)) | (cap_rx_stbc << 8) ))"
 
 		mac80211_add_capabilities ht_capab_flags $ht_cap_mask \
 			LDPC:0x1::$ldpc \
@@ -240,19 +240,19 @@ mac80211_hostapd_setup_base() {
 	case "$htmode" in
 		VHT20|HE20) enable_ac=1;;
 		VHT40|HE40)
-			case "$(( (($channel / 4) + $chan_ofs) % 2 ))" in
-				1) idx=$(($channel + 2));;
-				0) idx=$(($channel - 2));;
+			case "$(( ((channel / 4) + chan_ofs) % 2 ))" in
+				1) idx=$((channel + 2));;
+				0) idx=$((channel - 2));;
 			esac
 			enable_ac=1
 			vht_center_seg0=$idx
 		;;
 		VHT80|HE80)
-			case "$(( (($channel / 4) + $chan_ofs) % 4 ))" in
-				1) idx=$(($channel + 6));;
-				2) idx=$(($channel + 2));;
-				3) idx=$(($channel - 2));;
-				0) idx=$(($channel - 6));;
+			case "$(( ((channel / 4) + chan_ofs) % 4 ))" in
+				1) idx=$((channel + 6));;
+				2) idx=$((channel + 2));;
+				3) idx=$((channel - 2));;
+				0) idx=$((channel - 6));;
 			esac
 			enable_ac=1
 			vht_oper_chwidth=1
@@ -290,7 +290,7 @@ mac80211_hostapd_setup_base() {
 		op_class=
 		case "$htmode" in
 			HE20) op_class=131;;
-			HE*) op_class=$((132 + $vht_oper_chwidth))
+			HE*) op_class=$((132 + vht_oper_chwidth))
 		esac
 		[ -n "$op_class" ] && append base_cfg "op_class=$op_class" "$N"
 	}
@@ -322,15 +322,15 @@ mac80211_hostapd_setup_base() {
 		append base_cfg "ieee80211ac=1" "$N"
 		vht_cap=0
 		for cap in $(iw phy "$phy" info | awk -F "[()]" '/VHT Capabilities/ { print $2 }'); do
-			vht_cap="$(($vht_cap | $cap))"
+			vht_cap="$((vht_cap | cap))"
 		done
 
 		append base_cfg "vht_oper_chwidth=$vht_oper_chwidth" "$N"
 		append base_cfg "vht_oper_centr_freq_seg0_idx=$vht_center_seg0" "$N"
 
-		cap_rx_stbc=$((($vht_cap >> 8) & 7))
+		cap_rx_stbc=$(((vht_cap >> 8) & 7))
 		[ "$rx_stbc" -lt "$cap_rx_stbc" ] && cap_rx_stbc="$rx_stbc"
-		vht_cap="$(( ($vht_cap & ~(0x700)) | ($cap_rx_stbc << 8) ))"
+		vht_cap="$(( (vht_cap & ~(0x700)) | (cap_rx_stbc << 8) ))"
 
 		[ "$vht_oper_chwidth" -lt 2 ] && {
 			vht160=0
@@ -355,59 +355,59 @@ mac80211_hostapd_setup_base() {
 			RX-STBC-123:0x700:0x300:1 \
 			RX-STBC-1234:0x700:0x400:1 \
 
-		[ "$(($vht_cap & 0x800))" -gt 0 -a "$su_beamformer" -gt 0 ] && {
-			cap_ant="$(( ( ($vht_cap >> 16) & 3 ) + 1 ))"
+		[ "$((vht_cap & 0x800))" -gt 0 -a "$su_beamformer" -gt 0 ] && {
+			cap_ant="$(( ( (vht_cap >> 16) & 3 ) + 1 ))"
 			[ "$cap_ant" -gt "$beamformer_antennas" ] && cap_ant="$beamformer_antennas"
 			[ "$cap_ant" -gt 1 ] && vht_capab="$vht_capab[SOUNDING-DIMENSION-$cap_ant]"
 		}
 
-		[ "$(($vht_cap & 0x1000))" -gt 0 -a "$su_beamformee" -gt 0 ] && {
-			cap_ant="$(( ( ($vht_cap >> 13) & 3 ) + 1 ))"
+		[ "$((vht_cap & 0x1000))" -gt 0 -a "$su_beamformee" -gt 0 ] && {
+			cap_ant="$(( ( (vht_cap >> 13) & 3 ) + 1 ))"
 			[ "$cap_ant" -gt "$beamformee_antennas" ] && cap_ant="$beamformee_antennas"
 			[ "$cap_ant" -gt 1 ] && vht_capab="$vht_capab[BF-ANTENNA-$cap_ant]"
 		}
 
 		# supported Channel widths
 		vht160_hw=0
-		[ "$(($vht_cap & 12))" -eq 4 -a 1 -le "$vht160" ] && \
+		[ "$((vht_cap & 12))" -eq 4 -a 1 -le "$vht160" ] && \
 			vht160_hw=1
-		[ "$(($vht_cap & 12))" -eq 8 -a 2 -le "$vht160" ] && \
+		[ "$((vht_cap & 12))" -eq 8 -a 2 -le "$vht160" ] && \
 			vht160_hw=2
 		[ "$vht160_hw" = 1 ] && vht_capab="$vht_capab[VHT160]"
 		[ "$vht160_hw" = 2 ] && vht_capab="$vht_capab[VHT160-80PLUS80]"
 
 		# maximum MPDU length
 		vht_max_mpdu_hw=3895
-		[ "$(($vht_cap & 3))" -ge 1 -a 7991 -le "$vht_max_mpdu" ] && \
+		[ "$((vht_cap & 3))" -ge 1 -a 7991 -le "$vht_max_mpdu" ] && \
 			vht_max_mpdu_hw=7991
-		[ "$(($vht_cap & 3))" -ge 2 -a 11454 -le "$vht_max_mpdu" ] && \
+		[ "$((vht_cap & 3))" -ge 2 -a 11454 -le "$vht_max_mpdu" ] && \
 			vht_max_mpdu_hw=11454
 		[ "$vht_max_mpdu_hw" != 3895 ] && \
 			vht_capab="$vht_capab[MAX-MPDU-$vht_max_mpdu_hw]"
 
 		# maximum A-MPDU length exponent
 		vht_max_a_mpdu_len_exp_hw=0
-		[ "$(($vht_cap & 58720256))" -ge 8388608 -a 1 -le "$vht_max_a_mpdu_len_exp" ] && \
+		[ "$((vht_cap & 58720256))" -ge 8388608 -a 1 -le "$vht_max_a_mpdu_len_exp" ] && \
 			vht_max_a_mpdu_len_exp_hw=1
-		[ "$(($vht_cap & 58720256))" -ge 16777216 -a 2 -le "$vht_max_a_mpdu_len_exp" ] && \
+		[ "$((vht_cap & 58720256))" -ge 16777216 -a 2 -le "$vht_max_a_mpdu_len_exp" ] && \
 			vht_max_a_mpdu_len_exp_hw=2
-		[ "$(($vht_cap & 58720256))" -ge 25165824 -a 3 -le "$vht_max_a_mpdu_len_exp" ] && \
+		[ "$((vht_cap & 58720256))" -ge 25165824 -a 3 -le "$vht_max_a_mpdu_len_exp" ] && \
 			vht_max_a_mpdu_len_exp_hw=3
-		[ "$(($vht_cap & 58720256))" -ge 33554432 -a 4 -le "$vht_max_a_mpdu_len_exp" ] && \
+		[ "$((vht_cap & 58720256))" -ge 33554432 -a 4 -le "$vht_max_a_mpdu_len_exp" ] && \
 			vht_max_a_mpdu_len_exp_hw=4
-		[ "$(($vht_cap & 58720256))" -ge 41943040 -a 5 -le "$vht_max_a_mpdu_len_exp" ] && \
+		[ "$((vht_cap & 58720256))" -ge 41943040 -a 5 -le "$vht_max_a_mpdu_len_exp" ] && \
 			vht_max_a_mpdu_len_exp_hw=5
-		[ "$(($vht_cap & 58720256))" -ge 50331648 -a 6 -le "$vht_max_a_mpdu_len_exp" ] && \
+		[ "$((vht_cap & 58720256))" -ge 50331648 -a 6 -le "$vht_max_a_mpdu_len_exp" ] && \
 			vht_max_a_mpdu_len_exp_hw=6
-		[ "$(($vht_cap & 58720256))" -ge 58720256 -a 7 -le "$vht_max_a_mpdu_len_exp" ] && \
+		[ "$((vht_cap & 58720256))" -ge 58720256 -a 7 -le "$vht_max_a_mpdu_len_exp" ] && \
 			vht_max_a_mpdu_len_exp_hw=7
 		vht_capab="$vht_capab[MAX-A-MPDU-LEN-EXP$vht_max_a_mpdu_len_exp_hw]"
 
 		# whether or not the STA supports link adaptation using VHT variant
 		vht_link_adapt_hw=0
-		[ "$(($vht_cap & 201326592))" -ge 134217728 -a 2 -le "$vht_link_adapt" ] && \
+		[ "$((vht_cap & 201326592))" -ge 134217728 -a 2 -le "$vht_link_adapt" ] && \
 			vht_link_adapt_hw=2
-		[ "$(($vht_cap & 201326592))" -ge 201326592 -a 3 -le "$vht_link_adapt" ] && \
+		[ "$((vht_cap & 201326592))" -ge 201326592 -a 3 -le "$vht_link_adapt" ] && \
 			vht_link_adapt_hw=3
 		[ "$vht_link_adapt_hw" != 0 ] && \
 			vht_capab="$vht_capab[VHT-LINK-ADAPT-$vht_link_adapt_hw]"
@@ -655,7 +655,7 @@ mac80211_prepare_iw_htmode() {
 					esac
 				;;
 				*)
-					case "$(( ($channel / 4) % 2 ))" in
+					case "$(( (channel / 4) % 2 ))" in
 						1) iw_htmode="HT40+" ;;
 						0) iw_htmode="HT40-";;
 					esac
@@ -701,7 +701,7 @@ mac80211_setup_adhoc() {
 					json_get_var ikey "key$idx"
 
 					[ -n "$ikey" ] && {
-						ikey="$(($idx - 1)):$(prepare_key_wep "$ikey")"
+						ikey="$((idx - 1)):$(prepare_key_wep "$ikey")"
 						[ $idx -eq $key ] && ikey="d:$ikey"
 						append keyspec "$ikey"
 					}

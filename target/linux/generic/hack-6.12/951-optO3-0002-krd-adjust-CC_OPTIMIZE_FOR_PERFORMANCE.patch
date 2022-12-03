@@ -1,0 +1,13 @@
+--- a/Makefile
++++ b/Makefile
+@@ -813,6 +813,10 @@ KBUILD_CFLAGS += -Os
+ KBUILD_RUSTFLAGS += -Copt-level=s
+ endif
+ 
++ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
++KBUILD_CFLAGS += $(call cc-option,-fivopts -fno-tree-vectorize)
++endif
++
+ # Always set `debug-assertions` and `overflow-checks` because their default
+ # depends on `opt-level` and `debug-assertions`, respectively.
+ KBUILD_RUSTFLAGS += -Cdebug-assertions=$(if $(CONFIG_RUST_DEBUG_ASSERTIONS),y,n)

@@ -1,0 +1,37 @@
+--- a/net/bridge/br_input.c
++++ b/net/bridge/br_input.c
+@@ -380,7 +380,11 @@ static rx_handler_result_t br_handle_fra
+ 			return RX_HANDLER_PASS;
+ 
+ 		case 0x01:	/* IEEE MAC (Pause) */
+-			goto drop;
++			fwd_mask |= p->br->group_fwd_mask;
++			if (fwd_mask & (1u << dest[5]))
++				goto forward;
++			else
++				goto drop;
+ 
+ 		case 0x0E:	/* 802.1AB LLDP */
+ 			fwd_mask |= p->br->group_fwd_mask;
+--- a/net/bridge/br_netlink.c
++++ b/net/bridge/br_netlink.c
+@@ -1369,8 +1369,6 @@ static int br_changelink(struct net_devi
+ 	if (data[IFLA_BR_GROUP_FWD_MASK]) {
+ 		u16 fwd_mask = nla_get_u16(data[IFLA_BR_GROUP_FWD_MASK]);
+ 
+-		if (fwd_mask & BR_GROUPFWD_RESTRICTED)
+-			return -EINVAL;
+ 		br->group_fwd_mask = fwd_mask;
+ 	}
+ 
+--- a/net/bridge/br_sysfs_br.c
++++ b/net/bridge/br_sysfs_br.c
+@@ -179,8 +179,6 @@ static ssize_t group_fwd_mask_show(struc
+ static int set_group_fwd_mask(struct net_bridge *br, unsigned long val,
+ 			      struct netlink_ext_ack *extack)
+ {
+-	if (val & BR_GROUPFWD_RESTRICTED)
+-		return -EINVAL;
+ 
+ 	br->group_fwd_mask = val;
+ 

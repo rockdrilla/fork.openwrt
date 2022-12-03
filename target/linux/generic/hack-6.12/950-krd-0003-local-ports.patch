@@ -1,0 +1,11 @@
+--- a/net/ipv4/af_inet.c
++++ b/net/ipv4/af_inet.c
+@@ -1802,7 +1802,7 @@ static __net_init int inet_init_net(stru
+ 	/*
+ 	 * Set defaults for local port range
+ 	 */
+-	net->ipv4.ip_local_ports.range = 60999u << 16 | 32768u;
++	net->ipv4.ip_local_ports.range = 65533u << 16 | 49152u;
+ 
+ 	seqlock_init(&net->ipv4.ping_group_range.lock);
+ 	/*

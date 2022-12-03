@@ -1,0 +1,44 @@
+--- a/tools/lib/bpf/Makefile
++++ b/tools/lib/bpf/Makefile
+@@ -87,7 +87,7 @@ endif
+ # Append required CFLAGS
+ override CFLAGS += -std=gnu89
+ override CFLAGS += $(EXTRA_WARNINGS) -Wno-switch-enum
+-override CFLAGS += -Werror -Wall
++override CFLAGS += -Wall
+ override CFLAGS += $(INCLUDES)
+ override CFLAGS += -fvisibility=hidden
+ override CFLAGS += -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64
+--- a/tools/lib/perf/Makefile
++++ b/tools/lib/perf/Makefile
+@@ -71,7 +71,7 @@ INCLUDES = \
+ 
+ # Append required CFLAGS
+ override CFLAGS += $(EXTRA_WARNINGS)
+-override CFLAGS += -Werror -Wall
++override CFLAGS += -Wall
+ override CFLAGS += -fPIC
+ override CFLAGS += $(INCLUDES)
+ override CFLAGS += -fvisibility=hidden
+--- a/tools/lib/thermal/Makefile
++++ b/tools/lib/thermal/Makefile
+@@ -74,7 +74,7 @@ INCLUDES = \
+ 
+ # Append required CFLAGS
+ override CFLAGS += $(EXTRA_WARNINGS)
+-override CFLAGS += -Werror -Wall
++override CFLAGS += -Wall
+ override CFLAGS += -fPIC
+ override CFLAGS += $(NL3_CFLAGS)
+ override CFLAGS += $(INCLUDES)
+--- a/tools/thermal/lib/Makefile
++++ b/tools/thermal/lib/Makefile
+@@ -70,7 +70,7 @@ INCLUDES = \
+ 
+ # Append required CFLAGS
+ override CFLAGS += $(EXTRA_WARNINGS)
+-override CFLAGS += -Werror -Wall
++override CFLAGS += -Wall
+ override CFLAGS += -fPIC
+ override CFLAGS += $(INCLUDES)
+ override CFGLAS += -Wl,-L.

@@ -877,22 +877,6 @@ endef
 $(eval $(call KernelPackage,sched-flower))
 
 
-define KernelPackage/sched-fq-pie
-  SUBMENU:=$(NETWORK_SUPPORT_MENU)
-  TITLE:=Flow Queue Proportional Integral Enhanced (FQ-PIE)
-  DEPENDS:=+kmod-sched-core +kmod-sched-pie
-  KCONFIG:=CONFIG_NET_SCH_FQ_PIE
-  FILES:=$(LINUX_DIR)/net/sched/sch_fq_pie.ko
-  AUTOLOAD:=$(call AutoProbe, sch_fq_pie)
-endef
-
-define KernelPackage/sched-fq-pie/description
-  A queuing discipline that combines Flow Queuing with the PIE AQM.
-endef
-
-$(eval $(call KernelPackage,sched-fq-pie))
-
-
 define KernelPackage/sched-ipset
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=Traffic shaper ipset support
@@ -937,22 +921,6 @@ define KernelPackage/sched-mqprio/description
 endef
 
 $(eval $(call KernelPackage,sched-mqprio))
-
-
-define KernelPackage/sched-pie
-  SUBMENU:=$(NETWORK_SUPPORT_MENU)
-  TITLE:=Proportional Integral controller-Enhanced AQM (PIE)
-  DEPENDS:=+kmod-sched-core
-  KCONFIG:=CONFIG_NET_SCH_PIE
-  FILES:=$(LINUX_DIR)/net/sched/sch_pie.ko
-  AUTOLOAD:=$(call AutoProbe, sch_pie)
-endef
-
-define KernelPackage/sched-pie/description
-  A control theoretic active queue management scheme.
-endef
-
-$(eval $(call KernelPackage,sched-pie))
 
 
 define KernelPackage/sched-prio
@@ -1009,7 +977,7 @@ endef
 $(eval $(call KernelPackage,bpf-test))
 
 
-SCHED_MODULES_EXTRA = sch_codel sch_gred sch_multiq sch_sfq sch_teql sch_fq act_pedit act_simple act_skbmod act_csum em_cmp em_nbyte em_meta em_text
+SCHED_MODULES_EXTRA = sch_gred sch_multiq sch_teql act_pedit act_simple act_skbmod act_csum em_cmp em_nbyte em_meta em_text
 SCHED_FILES_EXTRA = $(foreach mod,$(SCHED_MODULES_EXTRA),$(LINUX_DIR)/net/sched/$(mod).ko)
 
 define KernelPackage/sched
@@ -1017,12 +985,9 @@ define KernelPackage/sched
   TITLE:=Extra traffic schedulers
   DEPENDS:=+kmod-sched-core +kmod-lib-crc32c +kmod-lib-textsearch
   KCONFIG:= \
-	CONFIG_NET_SCH_CODEL \
 	CONFIG_NET_SCH_GRED \
 	CONFIG_NET_SCH_MULTIQ \
-	CONFIG_NET_SCH_SFQ \
 	CONFIG_NET_SCH_TEQL \
-	CONFIG_NET_SCH_FQ \
 	CONFIG_NET_ACT_PEDIT \
 	CONFIG_NET_ACT_SIMP \
 	CONFIG_NET_ACT_SKBMOD \

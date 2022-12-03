@@ -85,6 +85,8 @@ set ${s}.${id}
 set ${s}.band='${lc(band_name)}'
 set ${s}.channel='${channel}'
 set ${s}.htmode='${htmode}'
+set ${s}.country='RU'
+set ${s}.legacy_rates='0'
 set ${s}.disabled='1'
 
 set ${si}=wifi-iface
@@ -93,6 +95,16 @@ set ${si}.network='lan'
 set ${si}.mode='ap'
 set ${si}.ssid='OpenWrt'
 set ${si}.encryption='none'
+set ${si}.wmm='1'
+set ${si}.wpa_disable_eapol_key_retries='1'
+set ${si}.time_advertisement='2'
+set ${si}.time_zone='MSK-3'
+set ${si}.wnm_sleep_mode='1'
+set ${si}.wnm_sleep_mode_no_keys='1'
+set ${si}.bss_transition='1'
+set ${si}.proxy_arp='1'
+set ${si}.ieee80211k='1'
+set ${si}.wpa_group_rekey='1200'
 
 `);
 		commit = true;

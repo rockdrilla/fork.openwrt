@@ -199,9 +199,17 @@ generate_network() {
 				set network.$1.username='rtk'
 				set network.$1.password='rtk'
 			EOF
+			uci -q batch <<-EOF
+				set network.${1}0='interface'
+				set network.${1}0.ifname='$ifname'
+				set network.${1}0.proto='static'
+				set network.${1}0.ipaddr='169.254.0.1'
+				set network.${1}0.netmask='255.255.255.252'
+			EOF
 			[ -e /proc/sys/net/ipv6 ] && {
 				uci -q batch <<-EOF
 					set network.$1.ipv6='1'
+					set network.${1}0.ipv6='1'
 					delete network.${1}6
 					set network.${1}6='interface'
 					set network.${1}6.device='@${1}'

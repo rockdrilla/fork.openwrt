@@ -729,7 +729,7 @@ static void ag71xx_sgmii_init_qca955x(struct device_node *np)
 			pr_err("ag71xx: max retries for SGMII fixup exceeded\n");
 			break;
 		}
-	} while (!(sgmii_status == 0xf || sgmii_status == 0x10));
+	} while (!(sgmii_status == 0x1f || sgmii_status == 0x10));
 
 sgmii_out:
 	iounmap(gmac_base);

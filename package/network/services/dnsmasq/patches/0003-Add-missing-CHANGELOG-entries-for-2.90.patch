@@ -1,0 +1,30 @@
+From de6f91465464770aa5df406221da18e2dc2c168a Mon Sep 17 00:00:00 2001
+From: Simon Kelley <simon@thekelleys.org.uk>
+Date: Mon, 19 Feb 2024 13:22:09 +0000
+Subject: [PATCH 3/9] Add missing CHANGELOG entries for 2.90
+
+---
+ CHANGELOG | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/CHANGELOG b/CHANGELOG
+index f318ac0..0f8dbea 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -69,6 +69,13 @@ version 2.90
+ 	Note that the is a security vulnerablity only when DNSSEC validation
+ 	is enabled.
+ 	
++	Fix memory-leak when attempting to cache SRV records with zero TTL.
++	Thanks to Damian Sawicki for the bug report.
++
++	Add --max-tcp-connections option to make limit on TCP handling
++	processes configurable.  Also keep stats on how near the limit
++	we're getting, to help with tuning. Patch from Damian Sawicki.
++
+ 	
+ version 2.89
+         Fix bug introduced in 2.88 (commit fe91134b) which can result
+-- 
+2.39.2
+

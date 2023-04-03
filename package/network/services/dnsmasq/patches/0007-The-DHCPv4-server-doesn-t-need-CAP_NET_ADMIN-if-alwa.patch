@@ -1,0 +1,40 @@
+From 9adbf009a6df76d9ae5be2b93a90e210e9aa8216 Mon Sep 17 00:00:00 2001
+From: Simon Kelley <simon@thekelleys.org.uk>
+Date: Wed, 21 Feb 2024 00:46:25 +0000
+Subject: [PATCH 7/9] The DHCPv4 server doesn't need CAP_NET_ADMIN if always
+ broadcasting.
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+CAP_NET_ADMIN is needed in the DHCPv4 code to place entries into
+the ARP cache. If it's configured to unconditionally broadcast
+to unconfigured clients, it never touches the ARP cache and
+doesn't need CAP_NET_ADMIN.
+
+Thanks to Martin Ivičič <max.enhanced@gmail.com> for prompting this.
+---
+ src/dnsmasq.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/src/dnsmasq.c b/src/dnsmasq.c
+index 30fb419..a9f26ae 100644
+--- a/src/dnsmasq.c
++++ b/src/dnsmasq.c
+@@ -313,9 +313,12 @@ int main (int argc, char **argv)
+     {
+       dhcp_init();
+ #   ifdef HAVE_LINUX_NETWORK
++      /* Need NET_RAW to send ping. */
+       if (!option_bool(OPT_NO_PING))
+ 	need_cap_net_raw = 1;
+-      need_cap_net_admin = 1;
++      /* Need NET_ADMIN to change ARP cache if not always broadcasting. */
++      if (daemon->force_broadcast == NULL || daemon->force_broadcast->list != NULL)
++        need_cap_net_admin = 1;
+ #   endif
+     }
+   
+-- 
+2.39.2
+

@@ -1,7 +1,7 @@
 From 1ed783b8d7343c42910a61f12a8fc6237eb80417 Mon Sep 17 00:00:00 2001
 From: Simon Kelley <simon@thekelleys.org.uk>
 Date: Mon, 19 Feb 2024 12:22:43 +0000
-Subject: Fix spurious "resource limit exceeded" messages.
+Subject: [PATCH 2/9] Fix spurious "resource limit exceeded" messages.
 
 Replies from upstream with a REFUSED rcode can result in
 log messages stating that a resource limit has been exceeded,
@@ -14,6 +14,8 @@ spotting this.
  src/forward.c | 6 +++---
  2 files changed, 8 insertions(+), 3 deletions(-)
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 713b785..f318ac0 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -1,3 +1,8 @@
@@ -25,9 +27,11 @@ spotting this.
  version 2.90
  	Fix reversion in --rev-server introduced in 2.88 which
  	caused breakage if the prefix length is not exactly divisible
+diff --git a/src/forward.c b/src/forward.c
+index 32f37e4..10e7496 100644
 --- a/src/forward.c
 +++ b/src/forward.c
-@@ -937,10 +937,10 @@ static void dnssec_validate(struct frec
+@@ -937,10 +937,10 @@ static void dnssec_validate(struct frec *forward, struct dns_header *header,
  	status = dnssec_validate_reply(now, header, plen, daemon->namebuff, daemon->keyname, &forward->class, 
  				       !option_bool(OPT_DNSSEC_IGN_NS) && (forward->sentto->flags & SERV_DO_DNSSEC),
  				       NULL, NULL, NULL, &orig->validate_counter);
@@ -41,3 +45,6 @@ spotting this.
    
    /* Can't validate, as we're missing key data. Put this
       answer aside, whilst we get that. */     
+-- 
+2.39.2
+

@@ -1,0 +1,50 @@
+From 550c368adea12b312f83686c61f9015c122046c2 Mon Sep 17 00:00:00 2001
+From: Simon Kelley <simon@thekelleys.org.uk>
+Date: Wed, 27 Mar 2024 16:00:06 +0000
+Subject: [PATCH 9/9] Treat cache insertion failure of DNSKEY and DS records as
+ another resource problem and fail validation with suitable logging.
+
+---
+ src/dnssec.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/src/dnssec.c b/src/dnssec.c
+index 291b43f..f5bf3f4 100644
+--- a/src/dnssec.c
++++ b/src/dnssec.c
+@@ -943,8 +943,10 @@ int dnssec_validate_by_ds(time_t now, struct dns_header *header, size_t plen, ch
+ 			   
+ 			   if (!cache_insert(name, &a, class, now, ttl, F_FORWARD | F_DNSKEY | F_DNSSECOK))
+ 			     {
++			       /* cache_insert fails when the cache is too small, so error with STAT_ABANDONED which
++				  will log this as a resource exhaustion problem, which it is. */
+ 			       blockdata_free(key);
+-			       return STAT_BOGUS;
++			       return STAT_ABANDONED;
+ 			     }
+ 			   
+ 			   a.log.keytag = keytag;
+@@ -1091,8 +1093,10 @@ int dnssec_validate_ds(time_t now, struct dns_header *header, size_t plen, char
+ 		  
+ 		  if (!cache_insert(name, &a, class, now, ttl, F_FORWARD | F_DS | F_DNSSECOK))
+ 		    {
++		      /* cache_insert fails when the cache is too small, so error with STAT_ABANDONED which
++			 will log this as a resource exhaustion problem, which it is. */
+ 		      blockdata_free(key);
+-		      return STAT_BOGUS;
++		      return STAT_ABANDONED;
+ 		    }
+ 		  else
+ 		    {
+@@ -1132,7 +1136,7 @@ int dnssec_validate_ds(time_t now, struct dns_header *header, size_t plen, char
+   
+   /* Use TTL from NSEC for negative cache entries */
+   if (!cache_insert(name, NULL, class, now, neg_ttl, flags))
+-    return STAT_BOGUS;
++    return STAT_ABANDONED;
+   
+   cache_end_insert();  
+   
+-- 
+2.39.2
+

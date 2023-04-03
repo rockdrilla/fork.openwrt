@@ -1,7 +1,7 @@
 From ccff85ad72d2f858d9743d40525128e4f62d41a8 Mon Sep 17 00:00:00 2001
 From: renmingshuai <renmingshuai@huawei.com>
 Date: Wed, 21 Feb 2024 00:24:25 +0000
-Subject: [PATCH] Fix error introduced in
+Subject: [PATCH 6/9] [PATCH] Fix error introduced in
  51471cafa5a4fa44d6fe490885d9910bd72a5907
 
 Signed-off-by: renmingshuai <renmingshuai@huawei.com>
@@ -9,9 +9,11 @@ Signed-off-by: renmingshuai <renmingshuai@huawei.com>
  src/dnssec.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/src/dnssec.c b/src/dnssec.c
+index ed2f53f..291b43f 100644
 --- a/src/dnssec.c
 +++ b/src/dnssec.c
-@@ -1547,7 +1547,7 @@ static int prove_non_existence_nsec3(str
+@@ -1547,7 +1547,7 @@ static int prove_non_existence_nsec3(struct dns_header *header, size_t plen, uns
        nsecs[i] = NULL; /* Speculative, will be restored if OK. */
        
        if (!(p = skip_name(nsec3p, header, plen, 15)))
@@ -20,7 +22,7 @@ Signed-off-by: renmingshuai <renmingshuai@huawei.com>
        
        p += 10; /* type, class, TTL, rdlen */
        
-@@ -1640,7 +1640,7 @@ static int prove_non_existence_nsec3(str
+@@ -1640,7 +1640,7 @@ static int prove_non_existence_nsec3(struct dns_header *header, size_t plen, uns
    if (!wildname)
      {
        if (!(wildcard = strchr(next_closest, '.')) || wildcard == next_closest)
@@ -29,3 +31,6 @@ Signed-off-by: renmingshuai <renmingshuai@huawei.com>
        
        wildcard--;
        *wildcard = '*';
+-- 
+2.39.2
+

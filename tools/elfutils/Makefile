@@ -71,7 +71,7 @@ ifeq ($(HOST_OS),Darwin)
   HOST_CFLAGS += -I/opt/homebrew/include
 endif
 
-HOST_CFLAGS += -Wno-error -fPIC
+HOST_CFLAGS += -Wno-error $(HOST_FPIC)
 HOST_CXXFLAGS += -O2
 
 HOST_CONFIGURE_ARGS += \

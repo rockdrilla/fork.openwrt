@@ -4,7 +4,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
 
 --- a/hostapd/Makefile
 +++ b/hostapd/Makefile
-@@ -221,6 +221,9 @@ endif
+@@ -222,6 +222,9 @@ endif
  ifdef CONFIG_NO_CTRL_IFACE
  CFLAGS += -DCONFIG_NO_CTRL_IFACE
  else
@@ -88,7 +88,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
  static int hostapd_ctrl_iface_sta_mib(struct hostapd_data *hapd,
  				      struct sta_info *sta,
  				      char *buf, size_t buflen)
-@@ -539,6 +539,7 @@ int hostapd_ctrl_iface_sta_next(struct h
+@@ -554,6 +554,7 @@ int hostapd_ctrl_iface_sta_next(struct h
  	return hostapd_ctrl_iface_sta_mib(hapd, sta->next, buf, buflen);
  }
  
@@ -96,7 +96,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
  
  #ifdef CONFIG_P2P_MANAGER
  static int p2p_manager_disconnect(struct hostapd_data *hapd, u16 stype,
-@@ -951,12 +952,12 @@ int hostapd_ctrl_iface_status(struct hos
+@@ -1002,12 +1003,12 @@ int hostapd_ctrl_iface_status(struct hos
  			return len;
  		len += ret;
  	}
@@ -113,7 +113,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
  		if (os_snprintf_error(buflen - len, ret))
 --- a/src/ap/ieee802_1x.c
 +++ b/src/ap/ieee802_1x.c
-@@ -2837,6 +2837,7 @@ static const char * bool_txt(bool val)
+@@ -2845,6 +2845,7 @@ static const char * bool_txt(bool val)
  	return val ? "TRUE" : "FALSE";
  }
  
@@ -121,7 +121,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
  
  int ieee802_1x_get_mib(struct hostapd_data *hapd, char *buf, size_t buflen)
  {
-@@ -3023,6 +3024,7 @@ int ieee802_1x_get_mib_sta(struct hostap
+@@ -3031,6 +3032,7 @@ int ieee802_1x_get_mib_sta(struct hostap
  	return len;
  }
  
@@ -131,7 +131,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
  static void ieee802_1x_wnm_notif_send(void *eloop_ctx, void *timeout_ctx)
 --- a/src/ap/wpa_auth.c
 +++ b/src/ap/wpa_auth.c
-@@ -5583,6 +5583,7 @@ static const char * wpa_bool_txt(int val
+@@ -5911,6 +5911,7 @@ static const char * wpa_bool_txt(int val
  	return val ? "TRUE" : "FALSE";
  }
  
@@ -139,7 +139,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
  
  #define RSN_SUITE "%02x-%02x-%02x-%d"
  #define RSN_SUITE_ARG(s) \
-@@ -5735,7 +5736,7 @@ int wpa_get_mib_sta(struct wpa_state_mac
+@@ -6063,7 +6064,7 @@ int wpa_get_mib_sta(struct wpa_state_mac
  
  	return len;
  }
@@ -169,7 +169,7 @@ Subject: [PATCH] Remove some unnecessary control interface functionality
  
 --- a/wpa_supplicant/Makefile
 +++ b/wpa_supplicant/Makefile
-@@ -1038,6 +1038,9 @@ ifdef CONFIG_FILS
+@@ -1039,6 +1039,9 @@ ifdef CONFIG_FILS
  OBJS += ../src/ap/fils_hlp.o
  endif
  ifdef CONFIG_CTRL_IFACE

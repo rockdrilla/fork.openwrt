@@ -34,44 +34,52 @@ for (let phy_name, phy in board.wlan) {
 	if (!info || !length(info.bands))
 		continue;
 
-	while (config[`radio${idx}`])
-		idx++;
-	let name = "radio" + idx++;
+	let radios = info.radios ?? [{ bands: info.bands }];
+	for (let radio_idx = 0; radio_idx < length(radios); radio_idx++) {
+		let radio = radios[radio_idx];
 
-	let s = "wireless." + name;
-	let si = "wireless.default_" + name;
+		while (config[`radio${idx}`])
+			idx++;
+		let name = "radio" + idx++;
 
-	let band_name = filter(bands_order, (b) => info.bands[b])[0];
-	if (!band_name)
-		continue;
+		let s = "wireless." + name;
+		let si = "wireless.default_" + name;
 
-	let band = info.bands[band_name];
-	let channel = band.default_channel ?? "auto";
+		let band_name = filter(bands_order, (b) => radio.bands[b])[0];
+		if (!band_name)
+			continue;
 
-	let width = band.max_width;
-	if (band_name == "2G")
-		width = 20;
-	else if (width > 80)
-		width = 80;
+		let band = info.bands[band_name];
+		let rband = radio.bands[band_name];
+		let channel = rband.default_channel ?? "auto";
 
-	let htmode = filter(htmode_order, (m) => band[lc(m)])[0];
-	if (htmode)
-		htmode += width;
-	else
-		htmode = "NOHT";
+		let width = band.max_width;
+		if (band_name == "2G")
+			width = 20;
+		else if (width > 80)
+			width = 80;
 
-	if (!phy.path)
-		continue;
+		let htmode = filter(htmode_order, (m) => band[lc(m)])[0];
+		if (htmode)
+			htmode += width;
+		else
+			htmode = "NOHT";
 
-	let macaddr = trim(readfile(`/sys/class/ieee80211/${phy_name}/macaddress`));
-	if (radio_exists(phy.path, macaddr, phy_name))
-		continue;
+		if (!phy.path)
+			continue;
 
-	let id = `phy='${phy_name}'`;
-	if (match(phy_name, /^phy[0-9]/))
-		id = `path='${phy.path}'`;
+		let macaddr = trim(readfile(`/sys/class/ieee80211/${phy_name}/macaddress`));
+		if (radio_exists(phy.path, macaddr, phy_name))
+			continue;
 
-	print(`set ${s}=wifi-device
+		let id = `phy='${phy_name}'`;
+		if (match(phy_name, /^phy[0-9]/))
+			id = `path='${phy.path}'`;
+
+		if (info.radios)
+			id += `\nset ${s}.radio='${radio_idx}'`;
+
+		print(`set ${s}=wifi-device
 set ${s}.type='mac80211'
 set ${s}.${id}
 set ${s}.band='${lc(band_name)}'
@@ -87,7 +95,8 @@ set ${si}.ssid='OpenWrt'
 set ${si}.encryption='none'
 
 `);
-	commit = true;
+		commit = true;
+	}
 }
 
 if (commit)

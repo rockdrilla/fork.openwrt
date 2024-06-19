@@ -15,7 +15,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
 
 --- a/include/net/mac80211.h
 +++ b/include/net/mac80211.h
-@@ -2032,8 +2032,8 @@ static inline bool lockdep_vif_mutex_hel
+@@ -2123,8 +2123,8 @@ static inline bool lockdep_vif_wiphy_mut
   *	@IEEE80211_KEY_FLAG_GENERATE_MMIC on the same key.
   * @IEEE80211_KEY_FLAG_NO_AUTO_TX: Key needs explicit Tx activation.
   * @IEEE80211_KEY_FLAG_GENERATE_MMIE: This flag should be set by the driver
@@ -23,12 +23,12 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
 - *	generation only
 + *	for a AES_CMAC or a AES_GMAC key to indicate that it requires sequence
 + *	number generation only
+  * @IEEE80211_KEY_FLAG_SPP_AMSDU: SPP A-MSDUs can be used with this key
+  *	(set by mac80211 from the sta->spp_amsdu flag)
   */
- enum ieee80211_key_flags {
- 	IEEE80211_KEY_FLAG_GENERATE_IV_MGMT	= BIT(0),
 --- a/net/mac80211/wpa.c
 +++ b/net/mac80211/wpa.c
-@@ -882,7 +882,8 @@ ieee80211_crypto_aes_cmac_256_encrypt(st
+@@ -895,7 +895,8 @@ ieee80211_crypto_aes_cmac_256_encrypt(st
  
  	info = IEEE80211_SKB_CB(skb);
  
@@ -38,7 +38,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  		return TX_CONTINUE;
  
  	if (WARN_ON(skb_tailroom(skb) < sizeof(*mmie)))
-@@ -898,6 +899,9 @@ ieee80211_crypto_aes_cmac_256_encrypt(st
+@@ -911,6 +912,9 @@ ieee80211_crypto_aes_cmac_256_encrypt(st
  
  	bip_ipn_set64(mmie->sequence_number, pn64);
  
@@ -48,7 +48,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  	bip_aad(skb, aad);
  
  	/* MIC = AES-256-CMAC(IGTK, AAD || Management Frame Body || MMIE, 128)
-@@ -1027,7 +1031,8 @@ ieee80211_crypto_aes_gmac_encrypt(struct
+@@ -1040,7 +1044,8 @@ ieee80211_crypto_aes_gmac_encrypt(struct
  
  	info = IEEE80211_SKB_CB(skb);
  
@@ -58,7 +58,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  		return TX_CONTINUE;
  
  	if (WARN_ON(skb_tailroom(skb) < sizeof(*mmie)))
-@@ -1043,6 +1048,9 @@ ieee80211_crypto_aes_gmac_encrypt(struct
+@@ -1056,6 +1061,9 @@ ieee80211_crypto_aes_gmac_encrypt(struct
  
  	bip_ipn_set64(mmie->sequence_number, pn64);
  

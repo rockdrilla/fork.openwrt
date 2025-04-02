@@ -1,0 +1,430 @@
+From: Felix Fietkau <nbd@nbd.name>
+Date: Thu, 20 Feb 2025 15:50:13 +0100
+Subject: [PATCH] types: add support for resources with embedded
+ data/values
+
+When using ucv_resource_create_ex, allocated resources can hold references
+to values, and contain the user data in the same memory block as the resource
+struct. This simplifies memory management and managing garbage collection.
+
+For resources allocated in this way, using ucv_resource_dataptr is not valid,
+since there is no separate data pointer anymore.
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+
+--- a/include/ucode/types.h
++++ b/include/ucode/types.h
+@@ -204,6 +204,16 @@ typedef struct {
+ 	void *data;
+ } uc_resource_t;
+ 
++typedef struct {
++	uc_value_t header;
++	uc_weakref_t ref;
++	uc_resource_type_t *type;
++
++	uint32_t reserved:4;
++	uint32_t uvcount:8;
++	uint32_t datasize:20;
++} uc_resource_ext_t;
++
+ uc_declare_vector(uc_resource_types_t, uc_resource_type_t *);
+ 
+ typedef struct {
+@@ -429,8 +439,26 @@ uc_resource_type_t *ucv_resource_type_ad
+ uc_resource_type_t *ucv_resource_type_lookup(uc_vm_t *, const char *);
+ 
+ uc_value_t *ucv_resource_new(uc_resource_type_t *, void *);
++uc_value_t *ucv_resource_new_ex(uc_vm_t *, uc_resource_type_t *, void **, size_t, size_t);
+ void *ucv_resource_data(uc_value_t *uv, const char *);
+ void **ucv_resource_dataptr(uc_value_t *, const char *);
++uc_value_t *ucv_resource_value_get(uc_value_t *, size_t);
++bool ucv_resource_value_set(uc_value_t *, size_t, uc_value_t *);
++
++static inline uc_resource_type_t *
++ucv_resource_type(uc_value_t *uv)
++{
++		if (uv->ext_flag) {
++			uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
++
++			return res->type;
++		}
++		else {
++			uc_resource_t *res = (uc_resource_t *)uv;
++
++			return res->type;
++		}
++}
+ 
+ static inline uc_value_t *
+ ucv_resource_create(uc_vm_t *vm, const char *type, void *value)
+@@ -443,6 +471,24 @@ ucv_resource_create(uc_vm_t *vm, const c
+     return ucv_resource_new(t, value);
+ }
+ 
++static inline uc_value_t *
++ucv_resource_create_ex(uc_vm_t *vm, const char *type, void **data, size_t uvcount, size_t datasize)
++{
++    uc_resource_type_t *t = NULL;
++
++    if (type && (t = ucv_resource_type_lookup(vm, type)) == NULL)
++        return NULL;
++
++    return ucv_resource_new_ex(vm, t, data, uvcount, datasize);
++}
++
++static inline bool
++ucv_resource_is_extended(uc_value_t *uv)
++{
++	return (((uintptr_t)uv & 3) == 0 && uv != NULL &&
++	        uv->ext_flag == true && uv->type == UC_RESOURCE);
++}
++
+ uc_value_t *ucv_regexp_new(const char *, bool, bool, bool, char **);
+ 
+ uc_value_t *ucv_upvalref_new(size_t);
+--- a/lib/debug.c
++++ b/lib/debug.c
+@@ -111,7 +111,7 @@ uc_debug_discover_ucv(uc_value_t *uv, st
+ 	uc_upvalref_t *upval;
+ 	uc_object_t *object;
+ 	uc_array_t *array;
+-	uc_resource_t *resource;
++	uc_resource_type_t *restype;
+ 	uc_program_t *program;
+ 	struct lh_entry *entry;
+ 	unsigned long hash;
+@@ -165,10 +165,10 @@ uc_debug_discover_ucv(uc_value_t *uv, st
+ 		break;
+ 
+ 	case UC_RESOURCE:
+-		resource = (uc_resource_t *)uv;
++		restype = ucv_resource_type(uv);
+ 
+-		if (resource->type)
+-			uc_debug_discover_ucv(resource->type->proto, seen);
++		if (restype)
++			uc_debug_discover_ucv(restype->proto, seen);
+ 
+ 		break;
+ 
+@@ -196,7 +196,7 @@ static void
+ print_value(FILE *out, size_t pad, struct lh_table *seen,
+             uc_vm_t *vm, uc_value_t *uv)
+ {
+-	uc_resource_t *resource;
++	uc_resource_type_t *restype;
+ 	uc_closure_t *closure;
+ 	uc_object_t *object;
+ 	uc_array_t *array;
+@@ -271,20 +271,20 @@ print_value(FILE *out, size_t pad, struc
+ 		}
+ 	}
+ 	else if (ucv_type(uv) == UC_RESOURCE) {
+-		resource = (uc_resource_t *)uv;
++		restype = ucv_resource_type(uv);
+ 
+-		if (resource->type) {
++		if (restype) {
+ 			for (j = 0; j < pad + 1; j++)
+ 				fprintf(out, "  ");
+ 
+-			fprintf(out, "#type %s\n", resource->type->name);
++			fprintf(out, "#type %s\n", restype->name);
+ 
+-			if (resource->type->proto) {
++			if (restype->proto) {
+ 				for (j = 0; j < pad + 2; j++)
+ 					fprintf(out, "  ");
+ 
+ 				fprintf(out, "#prototype = ");
+-				print_value(out, pad + 2, seen, vm, resource->type->proto);
++				print_value(out, pad + 2, seen, vm, restype->proto);
+ 			}
+ 		}
+ 	}
+--- a/types.c
++++ b/types.c
+@@ -79,6 +79,15 @@ ucv_unref(uc_weakref_t *ref)
+ 	ref->next->prev = ref->prev;
+ }
+ 
++static void
++ucv_ref_tail(uc_weakref_t *head, uc_weakref_t *item)
++{
++	item->next = head;
++	item->prev = head->prev;
++	head->prev->next = item;
++	head->prev = item;
++}
++
+ void
+ ucv_ref(uc_weakref_t *head, uc_weakref_t *item)
+ {
+@@ -88,6 +97,20 @@ ucv_ref(uc_weakref_t *head, uc_weakref_t
+ 	head->next = item;
+ }
+ 
++static uc_value_t **
++ucv_resource_values(uc_resource_ext_t *res)
++{
++	void *data;
++
++	if (!ucv_resource_is_extended((uc_value_t *)res) || !res->uvcount)
++		return NULL;
++
++	data = res + 1;
++	data += res->datasize * 8;
++
++	return data;
++}
++
+ #if 0
+ static uc_weakref_t *
+ ucv_get_weakref(uc_value_t *uv)
+@@ -134,8 +157,9 @@ ucv_gc_mark(uc_value_t *uv)
+ 	uc_upvalref_t *upval;
+ 	uc_object_t *object;
+ 	uc_array_t *array;
+-	uc_resource_t *resource;
++	uc_resource_type_t *restype;
+ 	uc_program_t *program;
++	uc_value_t **values;
+ 	struct lh_entry *entry;
+ 	size_t i;
+ 
+@@ -189,10 +213,23 @@ ucv_gc_mark(uc_value_t *uv)
+ 		break;
+ 
+ 	case UC_RESOURCE:
+-		resource = (uc_resource_t *)uv;
++		if (uv->ext_flag) {
++			uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
+ 
+-		if (resource->type)
+-			ucv_gc_mark(resource->type->proto);
++			if (res->ref.next)
++				ucv_set_mark(uv);
++
++			values = ucv_resource_values(res);
++			if (!values)
++				break;
++
++			for (i = 0; i < res->uvcount; i++)
++				ucv_gc_mark(values[i]);
++		}
++
++		restype = ucv_resource_type(uv);
++		if (restype)
++			ucv_gc_mark(restype->proto);
+ 
+ 		break;
+ 
+@@ -215,8 +252,6 @@ ucv_gc_mark(uc_value_t *uv)
+ void
+ ucv_free(uc_value_t *uv, bool retain)
+ {
+-	uc_resource_type_t *restype;
+-	uc_resource_t *resource;
+ 	uc_function_t *function;
+ 	uc_closure_t *closure;
+ 	uc_program_t *program;
+@@ -275,12 +310,30 @@ ucv_free(uc_value_t *uv, bool retain)
+ 		break;
+ 
+ 	case UC_RESOURCE:
+-		resource = (uc_resource_t *)uv;
+-		restype = resource->type;
++		if (uv->ext_flag) {
++			uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
++			uc_value_t **values;
++
++			values = ucv_resource_values(res);
++			if (values) {
++				for (i = 0; i < res->uvcount; i++)
++					ucv_put_value(values[i], retain);
++			}
+ 
+-		if (restype && restype->free)
+-			restype->free(resource->data);
++			if (res->type && res->type->free) {
++				void *data = res + 1;
+ 
++				res->type->free(data);
++			}
++
++			ref = &res->ref;
++		}
++		else {
++			uc_resource_t *res = (uc_resource_t *)uv;
++
++			if (res->type && res->type->free)
++				res->type->free(res->data);
++		}
+ 		break;
+ 
+ 	case UC_UPVALUE:
+@@ -1224,38 +1277,108 @@ ucv_resource_new(uc_resource_type_t *typ
+ 	return &res->header;
+ }
+ 
+-static uc_resource_t *
++uc_value_t *
++ucv_resource_new_ex(uc_vm_t *vm, uc_resource_type_t *type, void **data, size_t uvcount, size_t datasize)
++{
++	uc_resource_ext_t *res;
++	size_t size;
++
++	assert(uvcount < (1 << 8));
++	assert(datasize < (8 << 20));
++
++	size = sizeof(*res);
++	size += uvcount * sizeof(uc_value_t *);
++	size += datasize = (datasize + 7) & ~7;
++
++	res = xalloc(size);
++	res->header.type = UC_RESOURCE;
++	res->header.refcount = 1;
++	res->header.ext_flag = 1;
++	res->type = type;
++	res->uvcount = uvcount;
++	res->datasize = datasize / 8;
++	if (data)
++		*data = res + 1;
++
++	if (vm && uvcount) {
++		ucv_ref_tail(&vm->values, &res->ref);
++		vm->alloc_refs++;
++	}
++
++	return &res->header;
++}
++
++static bool
+ ucv_resource_check(uc_value_t *uv, const char *name)
+ {
+-	uc_resource_t *res = (uc_resource_t *)uv;
++	uc_resource_type_t *restype;
+ 
+ 	if (ucv_type(uv) != UC_RESOURCE)
+-		return NULL;
++		return false;
+ 
+-	if (name) {
+-		if (!res->type || strcmp(res->type->name, name))
+-			return NULL;
+-	}
++	if (!name)
++		return true;
++
++	restype = ucv_resource_type(uv);
+ 
+-	return res;
++	return restype && !strcmp(restype->name, name);
+ }
+ 
+ void *
+ ucv_resource_data(uc_value_t *uv, const char *name)
+ {
+-	uc_resource_t *res = ucv_resource_check(uv, name);
++	if (!ucv_resource_check(uv, name))
++		return NULL;
++
++	if (uv->ext_flag) {
++		uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
+ 
+-	return res ? res->data : NULL;
++		return res + 1;
++	}
++	else {
++		uc_resource_t *res = (uc_resource_t *)uv;
++
++		return res->data;
++	}
+ }
+ 
+ void **
+ ucv_resource_dataptr(uc_value_t *uv, const char *name)
+ {
+-	uc_resource_t *res = ucv_resource_check(uv, name);
++	uc_resource_t *res = (uc_resource_t *)uv;
++
++	if (!ucv_resource_check(uv, name) || res->header.ext_flag)
++		return NULL;
++
++	return &res->data;
++}
++
++uc_value_t *
++ucv_resource_value_get(uc_value_t *uv, size_t idx)
++{
++	uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
++	uc_value_t **uvdata = ucv_resource_values(res);
++
++	if (!uvdata || idx >= res->uvcount)
++		return NULL;
+ 
+-	return res ? &res->data : NULL;
++	return uvdata[idx];
+ }
+ 
++bool
++ucv_resource_value_set(uc_value_t *uv, size_t idx, uc_value_t *val)
++{
++	uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
++	uc_value_t **uvdata = ucv_resource_values(res);
++
++	if (!uvdata || idx >= res->uvcount)
++		return NULL;
++
++	ucv_put(uvdata[idx]);
++	uvdata[idx] = val;
++
++	return true;
++}
+ 
+ uc_value_t *
+ ucv_regexp_new(const char *pattern, bool icase, bool newline, bool global, char **error)
+@@ -1315,7 +1438,6 @@ uc_value_t *
+ ucv_prototype_get(uc_value_t *uv)
+ {
+ 	uc_resource_type_t *restype;
+-	uc_resource_t *resource;
+ 	uc_object_t *object;
+ 	uc_array_t *array;
+ 
+@@ -1331,8 +1453,7 @@ ucv_prototype_get(uc_value_t *uv)
+ 		return object->proto;
+ 
+ 	case UC_RESOURCE:
+-		resource = (uc_resource_t *)uv;
+-		restype = resource->type;
++		restype = ucv_resource_type(uv);
+ 
+ 		return restype ? restype->proto : NULL;
+ 
+@@ -1668,7 +1789,6 @@ ucv_to_stringbuf_formatted(uc_vm_t *vm,
+ {
+ 	bool json = (pad_char != '\0');
+ 	uc_resource_type_t *restype;
+-	uc_resource_t *resource;
+ 	uc_cfunction_t *cfunction;
+ 	uc_function_t *function;
+ 	uc_closure_t *closure;
+@@ -1862,13 +1982,12 @@ ucv_to_stringbuf_formatted(uc_vm_t *vm,
+ 		break;
+ 
+ 	case UC_RESOURCE:
+-		resource = (uc_resource_t *)uv;
+-		restype = resource->type;
++		restype = ucv_resource_type(uv);
+ 
+ 		ucv_stringbuf_printf(pb, "%s<%s %p>%s",
+ 			json ? "\"" : "",
+ 			restype ? restype->name : "resource",
+-			resource->data,
++			ucv_resource_data(uv, NULL),
+ 			json ? "\"" : "");
+ 
+ 		break;

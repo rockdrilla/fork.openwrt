@@ -1,0 +1,70 @@
+From: Felix Fietkau <nbd@nbd.name>
+Date: Thu, 6 Feb 2025 09:54:50 +0100
+Subject: [PATCH] types: add support for setting resource no_gc flag
+
+This allows specific resources to be exempted from garbage collection
+without having to store them in an object registry.
+
+Based on patch by Jo-Philipp Wich <jo@mein.io>
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+
+--- a/include/ucode/types.h
++++ b/include/ucode/types.h
+@@ -209,7 +209,8 @@ typedef struct {
+ 	uc_weakref_t ref;
+ 	uc_resource_type_t *type;
+ 
+-	uint32_t reserved:4;
++	uint32_t reserved:3;
++	uint32_t no_gc:1;
+ 	uint32_t uvcount:8;
+ 	uint32_t datasize:20;
+ } uc_resource_ext_t;
+@@ -489,6 +490,26 @@ ucv_resource_is_extended(uc_value_t *uv)
+ 	        uv->ext_flag == true && uv->type == UC_RESOURCE);
+ }
+ 
++static inline bool
++ucv_resource_get_no_gc(uc_value_t *uv)
++{
++	uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
++	return ucv_resource_is_extended(uv) && res->no_gc;
++}
++
++static inline bool
++ucv_resource_set_no_gc(uc_value_t *uv, bool no_gc)
++{
++	uc_resource_ext_t *res = (uc_resource_ext_t *)uv;
++
++	if (!ucv_resource_is_extended(uv) || res->no_gc == no_gc)
++		return false;
++
++	res->no_gc = no_gc;
++
++	return true;
++}
++
+ uc_value_t *ucv_regexp_new(const char *, bool, bool, bool, char **);
+ 
+ uc_value_t *ucv_upvalref_new(size_t);
+--- a/types.c
++++ b/types.c
+@@ -2552,6 +2552,16 @@ ucv_gc_common(uc_vm_t *vm, bool final)
+ 
+ 		for (i = 0; i < vm->restypes.count; i++)
+ 			ucv_gc_mark(vm->restypes.entries[i]->proto);
++
++		/* mark no-gc resources with embedded values */
++		for (ref = vm->values.prev; ref != &vm->values; ref = ref->prev) {
++			val = (uc_value_t *)((uintptr_t)ref - offsetof(uc_array_t, ref));
++			if (ucv_type(val) != UC_RESOURCE)
++				break;
++
++			if (ucv_resource_get_no_gc(val))
++				ucv_gc_mark(val);
++		}
+ 	}
+ 
+ 	/* unref unreachable objects */

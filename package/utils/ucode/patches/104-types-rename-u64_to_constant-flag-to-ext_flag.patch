@@ -1,0 +1,147 @@
+From: Felix Fietkau <nbd@nbd.name>
+Date: Thu, 20 Feb 2025 13:26:42 +0100
+Subject: [PATCH] types: rename u64_to_constant flag to ext_flag
+
+Preparation for reusing the same bit for indicating a resource with
+embedded data.
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+---
+
+--- a/include/ucode/types.h
++++ b/include/ucode/types.h
+@@ -49,7 +49,7 @@ typedef enum uc_type {
+ typedef struct uc_value {
+ 	uint32_t type:4;
+ 	uint32_t mark:1;
+-	uint32_t u64_or_constant:1;
++	uint32_t ext_flag:1;
+ 	uint32_t refcount:26;
+ } uc_value_t;
+ 
+@@ -529,23 +529,23 @@ ucv_is_arrowfn(uc_value_t *uv)
+ static inline bool
+ ucv_is_u64(uc_value_t *uv)
+ {
+-	return (((uintptr_t)uv & 3) == 0 && uv != NULL && uv->u64_or_constant == true &&
++	return (((uintptr_t)uv & 3) == 0 && uv != NULL && uv->ext_flag == true &&
+ 		    uv->type == UC_INTEGER);
+ }
+ 
+ static inline bool
+ ucv_is_constant(uc_value_t *uv)
+ {
+-	return (((uintptr_t)uv & 3) == 0 && uv != NULL && uv->u64_or_constant == true &&
++	return (((uintptr_t)uv & 3) == 0 && uv != NULL && uv->ext_flag == true &&
+ 	        (uv->type == UC_ARRAY || uv->type == UC_OBJECT));
+ }
+ 
+ static inline bool
+ ucv_set_constant(uc_value_t *uv, bool constant)
+ {
+-	if (((uintptr_t)uv & 3) == 0 && uv != NULL && uv->u64_or_constant != constant &&
++	if (((uintptr_t)uv & 3) == 0 && uv != NULL && uv->ext_flag != constant &&
+ 	    (uv->type == UC_ARRAY || uv->type == UC_OBJECT)) {
+-		uv->u64_or_constant = constant;
++		uv->ext_flag = constant;
+ 
+ 		return true;
+ 	}
+--- a/lib/debug.c
++++ b/lib/debug.c
+@@ -1113,7 +1113,7 @@ uc_getinfo(uc_vm_t *vm, size_t nargs)
+ 	switch (ucv_type(uv)) {
+ 	case UC_INTEGER:
+ 		ucv_object_add(rv, "unsigned",
+-			ucv_boolean_new(!(pv & 3) && uv->u64_or_constant));
++			ucv_boolean_new(!(pv & 3) && uv->ext_flag));
+ 
+ 		break;
+ 
+@@ -1136,7 +1136,7 @@ uc_getinfo(uc_vm_t *vm, size_t nargs)
+ 			ucv_uint64_new((uintptr_t)uvarr->entries));
+ 
+ 		ucv_object_add(rv, "count", ucv_uint64_new(uvarr->count));
+-		ucv_object_add(rv, "constant", ucv_boolean_new(uv->u64_or_constant));
++		ucv_object_add(rv, "constant", ucv_boolean_new(uv->ext_flag));
+ 		ucv_object_add(rv, "prototype", ucv_get(uvarr->proto));
+ 
+ 		break;
+@@ -1150,7 +1150,7 @@ uc_getinfo(uc_vm_t *vm, size_t nargs)
+ 		ucv_object_add(rv, "count",
+ 			ucv_uint64_new(lh_table_length(uvobj->table)));
+ 
+-		ucv_object_add(rv, "constant", ucv_boolean_new(uv->u64_or_constant));
++		ucv_object_add(rv, "constant", ucv_boolean_new(uv->ext_flag));
+ 		ucv_object_add(rv, "prototype", ucv_get(uvobj->proto));
+ 
+ 		break;
+--- a/types.c
++++ b/types.c
+@@ -494,7 +494,7 @@ ucv_int64_new(int64_t n)
+ 	integer = xalloc(sizeof(*integer));
+ 	integer->header.type = UC_INTEGER;
+ 	integer->header.refcount = 1;
+-	integer->header.u64_or_constant = 0;
++	integer->header.ext_flag = 0;
+ 	integer->i.s64 = n;
+ 
+ 	return &integer->header;
+@@ -516,7 +516,7 @@ ucv_uint64_new(uint64_t n)
+ 	integer = xalloc(sizeof(*integer));
+ 	integer->header.type = UC_INTEGER;
+ 	integer->header.refcount = 1;
+-	integer->header.u64_or_constant = 1;
++	integer->header.ext_flag = 1;
+ 	integer->i.u64 = n;
+ 
+ 	return &integer->header;
+@@ -544,7 +544,7 @@ ucv_uint64_get(uc_value_t *uv)
+ 	case UC_INTEGER:
+ 		integer = (uc_integer_t *)uv;
+ 
+-		if (integer->header.u64_or_constant)
++		if (integer->header.ext_flag)
+ 			return integer->i.u64;
+ 
+ 		if (integer->i.s64 >= 0)
+@@ -598,10 +598,10 @@ ucv_int64_get(uc_value_t *uv)
+ 	case UC_INTEGER:
+ 		integer = (uc_integer_t *)uv;
+ 
+-		if (integer->header.u64_or_constant && integer->i.u64 <= (uint64_t)INT64_MAX)
++		if (integer->header.ext_flag && integer->i.u64 <= (uint64_t)INT64_MAX)
+ 			return (int64_t)integer->i.u64;
+ 
+-		if (!integer->header.u64_or_constant)
++		if (!integer->header.ext_flag)
+ 			return integer->i.s64;
+ 
+ 		errno = ERANGE;
+@@ -737,7 +737,7 @@ ucv_array_push(uc_value_t *uv, uc_value_
+ {
+ 	uc_array_t *array = (uc_array_t *)uv;
+ 
+-	if (ucv_type(uv) != UC_ARRAY || uv->u64_or_constant)
++	if (ucv_type(uv) != UC_ARRAY || uv->ext_flag)
+ 		return NULL;
+ 
+ 	ucv_array_set(uv, array->count, item);
+@@ -939,7 +939,7 @@ ucv_object_add(uc_value_t *uv, const cha
+ 	unsigned long hash;
+ 	void *k;
+ 
+-	if (ucv_type(uv) != UC_OBJECT || uv->u64_or_constant)
++	if (ucv_type(uv) != UC_OBJECT || uv->ext_flag)
+ 		return false;
+ 
+ 	hash = lh_get_hash(object->table, (const void *)key);
+@@ -1090,7 +1090,7 @@ ucv_object_delete(uc_value_t *uv, const
+ {
+ 	uc_object_t *object = (uc_object_t *)uv;
+ 
+-	if (ucv_type(uv) != UC_OBJECT || uv->u64_or_constant)
++	if (ucv_type(uv) != UC_OBJECT || uv->ext_flag)
+ 		return false;
+ 
+ 	return (lh_table_delete(object->table, key) == 0);

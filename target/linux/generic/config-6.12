@@ -2519,14 +2519,14 @@ CONFIG_HW_RANDOM_TPM=y
 # CONFIG_HX711 is not set
 # CONFIG_HX9023S is not set
 # CONFIG_HYPERV is not set
-CONFIG_HZ=100
-CONFIG_HZ_100=y
+CONFIG_HZ=250
+# CONFIG_HZ_100 is not set
 # CONFIG_HZ_1000 is not set
 # CONFIG_HZ_1024 is not set
 # CONFIG_HZ_128 is not set
 # CONFIG_HZ_200 is not set
 # CONFIG_HZ_24 is not set
-# CONFIG_HZ_250 is not set
+CONFIG_HZ_250=y
 # CONFIG_HZ_256 is not set
 # CONFIG_HZ_300 is not set
 # CONFIG_HZ_48 is not set

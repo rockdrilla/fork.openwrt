@@ -60,6 +60,7 @@ drv_mac80211_init_device_config() {
 		he_bss_color_enabled \
 		he_twt_required \
 		he_twt_responder \
+		edcca_enable \
 		etxbfen \
 		itxbfen \
 		lpi_enable \
@@ -75,7 +76,11 @@ drv_mac80211_init_device_config() {
 		tx_stbc \
 		he_bss_color \
 		he_spr_non_srg_obss_pd_max_offset \
-		sku_idx
+		sku_idx \
+		edcca_compensation \
+		edcca_thres_0 \
+		edcca_thres_1 \
+		edcca_thres_2
 	config_add_boolean \
 		ldpc \
 		greenfield \
@@ -485,6 +490,11 @@ mac80211_hostapd_setup_base() {
 			he_mu_beamformer:1 \
 			he_twt_required:0 \
 			he_twt_responder:0 \
+			edcca_enable:0 \
+			edcca_compensation:-6 \
+			edcca_thres_0:-60 \
+			edcca_thres_1:-62 \
+			edcca_thres_2:-59 \
 			he_spr_sr_control:3 \
 			he_spr_psr_enabled:0 \
 			he_spr_non_srg_obss_pd_max_offset:0 \
@@ -521,29 +531,29 @@ mac80211_hostapd_setup_base() {
 			append base_cfg "he_twt_responder=$he_twt_responder" "$N"
 		fi
 
-		edcca_enable=$(uci get advanced.@edcca[0].edcca_enable 2>/dev/null || echo "1")
-		if [ -n "$edcca_enable" ]; then
+		if [ "$edcca_enable" -gt 0 ]; then
+			append base_cfg "edcca_enable=$edcca_enable" "$N"
+			if [ -n "$edcca_compensation" ]; then
+				append base_cfg "edcca_compensation=$edcca_compensation" "$N"
+			fi
+			edcca_threshold="${edcca_thres_0} ${edcca_thres_1} ${edcca_thres_2}"
+			append base_cfg "edcca_threshold=$edcca_threshold" "$N"
+		else
+			edcca_enable=0
 			append base_cfg "edcca_enable=$edcca_enable" "$N"
 		fi
 
-		edcca_compensation=$(uci get advanced.@edcca[0].compensation 2>/dev/null || echo "-6")
-		if [ -n "$edcca_compensation" ]; then
-			append base_cfg "edcca_compensation=$edcca_compensation" "$N"
-		fi
-
-		thres_0=$(uci get advanced.@edcca[0].thres_0 2>/dev/null || echo "-60")
-		thres_1=$(uci get advanced.@edcca[0].thres_1 2>/dev/null || echo "-62")
-		thres_2=$(uci get advanced.@edcca[0].thres_2 2>/dev/null || echo "-59")
-		edcca_threshold="${thres_0} ${thres_1} ${thres_2}"
-		if [ -n "$edcca_threshold" ]; then
-			append base_cfg "edcca_threshold=$edcca_threshold" "$N"
-		fi
-
 		if [ "$he_bss_color_enabled" -gt 0 ]; then
-			if !([ "$he_bss_color" -gt 0 ] && [ "$he_bss_color" -le 64 ]); then
-				rand=$(head -n 1 /dev/urandom | tr -dc 0-9 | head -c 2 | sed 's/^0*//')
-				he_bss_color=$((rand % 63 + 1))
-			fi
+			## krd: adjust he_bss_color to be in range 1-63
+			[ -n "$he_bss_color" ] || he_bss_color=0
+			case "$he_bss_color" in
+			[1-9] | [1-5][0-9] | 6[0-3] ) ;;
+			* )
+				r=$(dd if=/dev/urandom bs=1 count=1 2>/dev/null | hexdump -e '1/1 "%u"')
+				he_bss_color=$(( (r % 63) + 1 ))
+			;;
+			esac
+
 			append base_cfg "he_bss_color=$he_bss_color" "$N"
 			[ "$he_spr_non_srg_obss_pd_max_offset" -gt 0 ] && { \
 				append base_cfg "he_spr_non_srg_obss_pd_max_offset=$he_spr_non_srg_obss_pd_max_offset" "$N"

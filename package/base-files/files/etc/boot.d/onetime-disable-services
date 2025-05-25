@@ -1,0 +1,46 @@
+#!/bin/sh
+set +e
+for i in $(tail -n +14 "$0") ; do
+	[ -n "$i" ] || continue
+	i="/etc/init.d/$i"
+	[ -f "$i" ] || continue
+	[ -x "$i" ] || continue
+	"$i" stop 2>/dev/null
+	"$i" disable
+done
+chmod -x "$0"
+exit 0
+## list of non-essential services:
+aria2
+bridger
+dbus
+dhcpcd
+eoip
+etherwake
+haproxy
+keepalived
+keepalived-inotify
+ksmbd
+lldpd
+modemmanager
+netserver
+nfsd
+omcproxy
+podman
+pptpd
+qosify
+radius
+relayd
+rpcbind
+rsyncd
+smstools3
+socat
+sysntpd
+udpxy
+unet-dht
+unetd
+unetmsg
+usteer
+wifi_schedule
+wsdd2
+xl2tpd

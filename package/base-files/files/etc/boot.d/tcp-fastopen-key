@@ -1,0 +1,7 @@
+#!/bin/sh
+set +e
+r() { dd if=/dev/urandom bs=1 count="$1" 2>/dev/null | hexdump -e '1/1 "%02x"' ; }
+r4() { r 4 ; }
+tcp_fastopen_key="$(r4)-$(r4)-$(r4)-$(r4)"
+sysctl -w "net.ipv4.tcp_fastopen_key=${tcp_fastopen_key}" >/dev/null 2>&1
+exit 0

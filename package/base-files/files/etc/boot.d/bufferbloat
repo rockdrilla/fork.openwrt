@@ -1,0 +1,22 @@
+#!/bin/sh
+
+set +e
+
+for f in $( ls -1 /sys/kernel/debug/ieee80211/*/aql_txq_limit ) ; do
+	for x in 0 1 2 3 ; do
+		## default:
+		#echo $x 5000 12000 > $f
+		echo $x 1500 3500 > $f
+	done
+	## default:
+	#echo mcast 50000 > $f
+	echo mcast 40000 > $f
+done
+
+for f in $( ls -1 /sys/kernel/debug/ieee80211/*/aql_threshold ) ; do
+	## default:
+	#echo 24000 > $f
+	echo 12000 > $f
+done
+
+exit 0

@@ -1,0 +1,39 @@
+From fe27543b55e55b71cbba1502d7f569058111e0f9 Mon Sep 17 00:00:00 2001
+From: Andris PE <neandris@gmail.com>
+Date: Wed, 24 Jul 2024 00:54:55 +0300
+Subject: [PATCH] Parse states before (quick) loopback accept
+
+Suggested at
+https://forum.openwrt.org/t/first-rule-in-chain-input-output-for-firewall4/204723
+Formally speeds up "default" nat function over loopback ipc.
+
+--- a/root/usr/share/firewall4/templates/ruleset.uc
++++ b/root/usr/share/firewall4/templates/ruleset.uc
+@@ -112,10 +112,9 @@ table inet fw4 {
+ 	chain input {
+ 		type filter hook input priority filter; policy {{ fw4.input_policy(true) }};
+ 
+-		iif "lo" accept comment "!fw4: Accept traffic from loopback"
+-
+ {% fw4.includes('chain-prepend', 'input') %}
+ 		ct state established,related accept comment "!fw4: Accept inbound flows"
++		iif "lo" accept comment "!fw4: Accept traffic from loopback"
+ {% if (fw4.default_option("synflood_protect") && fw4.default_option("synflood_rate")): %}
+ 		tcp flags & (fin | syn | rst | ack) == syn jump syn_flood comment "!fw4: Rate limit TCP syn packets"
+ {% endif %}
+@@ -155,14 +154,13 @@ table inet fw4 {
+ 	chain output {
+ 		type filter hook output priority filter; policy {{ fw4.output_policy(true) }};
+ 
+-		oif "lo" accept comment "!fw4: Accept traffic towards loopback"
+-
+ {% fw4.includes('chain-prepend', 'output') %}
+ {% if (fw4.default_option("drop_invalid")): %}
+ 		ct state vmap { established : accept, related : accept, invalid : drop } comment "!fw4: Handle outbound flows"
+ {% else %}
+ 		ct state established,related accept comment "!fw4: Accept outbound flows"
+ {% endif %}
++		oif "lo" accept comment "!fw4: Accept traffic towards loopback"
+ {% for (let rule in fw4.rules("output")): %}
+ 		{%+ include("rule.uc", { fw4, zone: null, rule }) %}
+ {% endfor %}

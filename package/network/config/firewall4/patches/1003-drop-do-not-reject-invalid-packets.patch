@@ -1,0 +1,58 @@
+From a1f42721d838ad80163c7b4d32c2bf30f5abce2b Mon Sep 17 00:00:00 2001
+From: Andris PE <neandris@gmail.com>
+Date: Sun, 16 Feb 2025 21:11:33 +0000
+Subject: [PATCH] Do not reject invalid (out of state) packets
+
+We cannot fix invalid (checksum, out of state, short) packets by
+replying them with valid packet. Lets keep grief to bare minimum
+
+--- a/root/usr/share/firewall4/templates/ruleset.uc
++++ b/root/usr/share/firewall4/templates/ruleset.uc
+@@ -125,7 +125,7 @@ table inet fw4 {
+ 		{%+ include("zone-jump.uc", { fw4, zone, rule, direction: "input" }) %}
+ {% endfor; endfor %}
+ {% if (fw4.input_policy() == "reject"): %}
+-		jump handle_reject
++		goto handle_reject
+ {% endif %}
+ {% fw4.includes('chain-append', 'input') %}
+ 	}
+@@ -147,7 +147,7 @@ table inet fw4 {
+ {% endfor; endfor %}
+ {% fw4.includes('chain-append', 'forward') %}
+ {% if (fw4.forward_policy() == "reject"): %}
+-		jump handle_reject
++		goto handle_reject
+ {% endif %}
+ 	}
+ 
+@@ -178,7 +178,7 @@ table inet fw4 {
+ {% endfor %}
+ {% fw4.includes('chain-append', 'output') %}
+ {% if (fw4.output_policy() == "reject"): %}
+-		jump handle_reject
++		goto handle_reject
+ {% endif %}
+ 	}
+ 
+@@ -198,6 +198,9 @@ table inet fw4 {
+ 	}
+ 
+ 	chain handle_reject {
++{% if (!fw4.default_option("drop_invalid")): %}
++		ct state invalid counter drop comment "!fw4: drop invalid packets before reject"
++{% endif %}
+ 		meta l4proto tcp reject with {{
+ 			(fw4.default_option("tcp_reject_code") != "tcp-reset")
+ 				? `icmpx type ${fw4.default_option("tcp_reject_code")}`
+--- a/root/usr/share/firewall4/templates/zone-verdict.uc
++++ b/root/usr/share/firewall4/templates/zone-verdict.uc
+@@ -10,7 +10,7 @@
+ {%+  if (verdict != "accept" && (zone.log & 1)): -%}
+ 	log prefix "{{ verdict }} {{ zone.name }} {{ egress ? "out" : "in" }}: " {%+ endif -%}
+ {%   if (verdict == "reject"): -%}
+-	jump handle_reject comment "!fw4: reject {{ zone.name }} {{ fw4.nfproto(rule.family, true) }} traffic"
++	goto handle_reject comment "!fw4: reject {{ zone.name }} {{ fw4.nfproto(rule.family, true) }} traffic"
+ {%   else -%}
+ 	{{ verdict }} comment "!fw4: {{ verdict }} {{ zone.name }} {{ fw4.nfproto(rule.family, true) }} traffic"
+ {%   endif -%}

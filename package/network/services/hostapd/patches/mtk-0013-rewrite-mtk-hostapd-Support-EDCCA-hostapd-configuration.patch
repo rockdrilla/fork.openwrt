@@ -62,8 +62,8 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
  			   "Line %d: unknown configuration item '%s'",
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -544,6 +544,19 @@ static const char * pbc_status_str(enum
- }
+@@ -4037,6 +4037,125 @@ fail:
+ #endif /* CONFIG_NAN_USD */
  
  
 +static const char * edcca_mode_str(enum edcca_mode status)
@@ -79,13 +79,6 @@ edcca_enable and edcca_compensation and implement edcca related handlers.
 +}
 +
 +
- static int hostapd_ctrl_iface_wps_get_status(struct hostapd_data *hapd,
- 					     char *buf, size_t buflen)
- {
-@@ -4037,6 +4050,112 @@ fail:
- #endif /* CONFIG_NAN_USD */
- 
- 
 +static int
 +hostapd_ctrl_iface_set_edcca(struct hostapd_data *hapd, char *cmd,
 +					 char *buf, size_t buflen)

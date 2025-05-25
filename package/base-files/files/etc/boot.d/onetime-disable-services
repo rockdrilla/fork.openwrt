@@ -1,0 +1,100 @@
+#!/bin/sh
+set +e
+for i in $(tail -n +14 "$0") ; do
+	[ -n "$i" ] || continue
+	i="/etc/init.d/$i"
+	[ -f "$i" ] || continue
+	[ -x "$i" ] || continue
+	"$i" stop 2>/dev/null
+	"$i" disable
+done
+chmod -x "$0"
+exit 0
+## list of non-essential services:
+adblock
+adblock-fast
+adguardhome
+aria2
+avahi-daemon
+banip
+bluelog
+bluetoothd
+bridger
+btagent
+cloudflared
+dbus
+ddns
+dhcpcd
+dockerd
+eoip
+etherwake
+etherwake-nfqueue
+frr
+haproxy
+haveged
+hd-idle
+https-dns-proxy
+ipsec
+kcptun
+keepalived
+keepalived-inotify
+ksmbd
+lldpd
+lm-sensors
+lvm2
+lxc-auto
+mdns-repeater
+mdnsd
+mDNSResponder
+minidlna
+modemmanager
+mwan3
+nbd-client
+nbd-server
+nebula
+netserver
+nfsd
+nft-qos
+ocserv
+ohybridproxy
+omcproxy
+openvpn
+pbr
+podman
+pptpd
+qosify
+radius
+rclone
+relayd
+rpcbind
+rsyncd
+rtty
+samba4
+ser2net
+sing-box
+smcroute
+smstools3
+socat
+sqm
+squid
+sysntpd
+tailscale
+trafficshaper
+u2pnpd
+uanytun
+udpxy
+unet-dht
+unetd
+unetmsg
+uspot
+uspotfilter
+usteer
+v2ray
+v2raya
+wgsd-coredns
+wgserver
+wifi_schedule
+wsdd2
+xl2tpd
+xray
+xupnpd

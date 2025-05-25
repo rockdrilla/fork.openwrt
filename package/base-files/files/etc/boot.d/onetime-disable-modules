@@ -1,0 +1,110 @@
+#!/bin/sh
+set +e
+for i in $(tail -n +13 "$0") ; do
+	[ -n "$i" ] || continue
+	i="/etc/modules.d/$i"
+	[ -f "$i" ] || continue
+	[ -s "$i" ] || continue
+	: > "$i"
+done
+chmod -x "$0"
+exit 0
+## list of non-essential modules:
+13-macsec
+13-vxlan
+30-dnsresolver
+30-fs-exfat
+30-fs-ext4
+30-fs-nfs-common
+30-fs-vfat
+30-fs-xfs
+30-ipsec
+30-tun
+30-veth
+31-fs-nfs-common-rpcsec
+31-iptunnel
+31-iptunnel4
+31-iptunnel6
+31-oid-registry
+32-ip6-tunnel
+32-ipip
+32-ipsec4
+32-ipsec6
+32-l2tp
+32-sit
+32-udptunnel4
+32-udptunnel6
+33-ip-vti
+33-ip6-vti
+33-l2tp-eth
+33-l2tp-ip
+34-dummy
+34-ifb
+39-gre
+39-gre6
+40-fs-msdos
+40-fs-nfs
+40-fs-nfsd
+41-fs-ksmbd
+41-fs-nfs-v4
+50-siit
+61-hid
+6lowpan
+70-ikconfig
+99-netem
+99-pktgen
+ath9k-htc
+bluetooth
+bluetooth-6lowpan
+fou
+fou6
+ipt-conntrack
+ipt-conntrack-extra
+ipt-core
+ipvlan
+mac80211-hwsim
+macvlan
+nf-ipt
+nf-ipt6
+nf-nathelper
+nf-nathelper-extra
+nft-xfrm
+pppol2tp
+pptp
+tls
+usb-acm
+usb-net
+usb-net-aqc111
+usb-net-cdc-eem
+usb-net-cdc-ether
+usb-net-cdc-mbim
+usb-net-cdc-ncm
+usb-net-cdc-subset
+usb-net-dm9601-ether
+usb-net-hso
+usb-net-huawei-cdc-ncm
+usb-net-ipheth
+usb-net-kalmia
+usb-net-kaweth
+usb-net-lan78xx
+usb-net-mcs7830
+usb-net-pegasus
+usb-net-pl
+usb-net-qmi-wwan
+usb-net-rndis
+usb-net-rtl8150
+usb-net-rtl8152
+usb-net-sierrawireless
+usb-net-smsc75xx
+usb-net-sr9700
+usb-serial
+usb-serial-option
+usb-serial-pl2303
+usb-serial-wwan
+usb-storage
+usb-storage-extras
+usb-storage-uas
+usb-wdm
+vhost
+vhost-net
+xfrm-interface

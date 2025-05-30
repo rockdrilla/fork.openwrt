@@ -18,8 +18,8 @@ irq_phys_to_virt() {
 	awk "\$1 ~ /^[0-9]+:\$/ && \$${f_phys_irq} == \"$1\" {sub(\":\",\"\",\$1); print \$1 ; exit ; }" < /proc/interrupts
 }
 
+eth_irq_rx=221
 eth_irq_tx=229
-eth_irq_rx=230
 
 wed_enable=$(mod_param mt7915e wed_enable)
 case "${wed_enable}" in

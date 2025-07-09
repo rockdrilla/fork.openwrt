@@ -11,11 +11,11 @@ Signed-off-by: Michael Lee <michael-cy.lee@mediatek.com>
 
 --- a/net/wireless/nl80211.c
 +++ b/net/wireless/nl80211.c
-@@ -3661,6 +3661,7 @@ static int nl80211_set_wiphy(struct sk_b
- 		}
+@@ -3676,6 +3676,7 @@ static int nl80211_set_wiphy(struct sk_b
+ 			return -EINVAL;
  
  		if (netdev->ieee80211_ptr->iftype != NL80211_IFTYPE_AP &&
 +		    netdev->ieee80211_ptr->iftype != NL80211_IFTYPE_STATION &&
- 		    netdev->ieee80211_ptr->iftype != NL80211_IFTYPE_P2P_GO) {
- 			result = -EINVAL;
- 			goto out;
+ 		    netdev->ieee80211_ptr->iftype != NL80211_IFTYPE_P2P_GO)
+ 			return -EINVAL;
+ 

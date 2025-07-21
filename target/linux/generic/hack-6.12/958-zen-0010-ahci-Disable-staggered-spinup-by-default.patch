@@ -1,0 +1,29 @@
+From 1ec451a4bbac7cc00b59f8ca504d6a8898615880 Mon Sep 17 00:00:00 2001
+From: EXtremeExploit <pedro.montes.alcalde@gmail.com>
+Date: Fri, 29 Nov 2024 13:05:27 -0300
+Subject: ZEN: ahci: Disable staggered spinup by default
+
+This patch disabled the staggered spinup used for HDDs.
+
+The goal is to make boot times faster on systems
+with the small downside of a small spike in power consumption.
+
+Systems with a bunch of HDDs would see considerable faster boots
+
+This does make sense in the zen kernel as its supposed to be a kernel
+specialized for desktop performance, and faster boot times does fit
+into that description
+
+Signed-off-by: Pedro Montes Alcalde <pedro.montes.alcalde@gmail.com>
+
+--- a/drivers/ata/libahci.c
++++ b/drivers/ata/libahci.c
+@@ -34,7 +34,7 @@
+ #include "libata.h"
+ 
+ static int ahci_skip_host_reset;
+-int ahci_ignore_sss;
++int ahci_ignore_sss = 1;
+ EXPORT_SYMBOL_GPL(ahci_ignore_sss);
+ 
+ module_param_named(skip_host_reset, ahci_skip_host_reset, int, 0444);

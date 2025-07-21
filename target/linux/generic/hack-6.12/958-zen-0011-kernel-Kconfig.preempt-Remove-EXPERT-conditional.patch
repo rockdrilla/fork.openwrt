@@ -1,0 +1,19 @@
+From a31b09c511dd58e5032a3c941638207281b20ce4 Mon Sep 17 00:00:00 2001
+From: Steven Barrett <steven@liquorix.net>
+Date: Sat, 14 Dec 2024 11:23:18 -0600
+Subject: ZEN: kernel/Kconfig.preempt: Remove EXPERT conditional on PREEMPT_RT
+
+Allow users to select PREEMPT_RT without requiring to configure all
+items hidden by enabling CONFIG_EXPERT.
+
+--- a/kernel/Kconfig.preempt
++++ b/kernel/Kconfig.preempt
+@@ -69,7 +69,7 @@ config PREEMPT
+ 
+ config PREEMPT_RT
+ 	bool "Fully Preemptible Kernel (Real-Time)"
+-	depends on EXPERT && ARCH_SUPPORTS_RT
++	depends on ARCH_SUPPORTS_RT
+ 	select PREEMPTION
+ 	help
+ 	  This option turns the kernel into a real-time kernel by replacing

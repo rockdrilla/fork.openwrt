@@ -1,0 +1,194 @@
+From eacae6d88bcc8a925124f97b7788bb2bfac8b267 Mon Sep 17 00:00:00 2001
+From: Vinay Banakar <vny@google.com>
+Date: Mon, 20 Jan 2025 16:47:29 -0600
+Subject: mm: Optimize TLB flushes during page reclaim
+
+The current implementation in shrink_folio_list() performs full TLB
+flushes and issues IPIs for each individual page being reclaimed. This
+causes unnecessary overhead during memory reclaim, whether triggered
+by madvise(MADV_PAGEOUT) or kswapd, especially in scenarios where
+applications are actively moving cold pages to swap while maintaining
+high performance requirements for hot pages.
+
+The current code:
+1. Clears PTE and unmaps each page individually
+2. Performs a full TLB flush on all cores using the VMA (via CR3 write) or
+issues individual TLB shootdowns (invlpg+invlpcid) for single-core usage
+3. Submits each page individually to BIO
+
+This approach results in:
+- Excessive full TLB flushes across all cores
+- Unnecessary IPI storms when processing multiple pages
+- Suboptimal I/O submission patterns
+
+I initially tried using selective TLB shootdowns (invlpg) instead of
+full TLB flushes per each page to avoid interference with other
+threads. However, this approach still required sending IPIs to all
+cores for each page, which did not significantly improve application
+throughput.
+
+This patch instead optimizes the process by batching operations,
+issuing one IPI per PMD instead of per page. This reduces interrupts
+by a factor of 512 and enables batching page submissions to BIO. The
+new approach:
+1. Collect dirty pages that need to be written back
+2. Issue a single TLB flush for all dirty pages in the batch
+3. Process the collected pages for writebacks (submit to BIO)
+
+Testing shows significant reduction in application throughput impact
+during page-out operations. Applications maintain better performance
+during memory reclaim, when triggered by explicit
+madvise(MADV_PAGEOUT) calls.
+
+I'd appreciate your feedback on this approach, especially on the
+correctness of batched BIO submissions. Looking forward to your
+comments.
+
+Signed-off-by: Vinay Banakar <vny@google.com>
+---
+ mm/vmscan.c | 120 ++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 74 insertions(+), 46 deletions(-)
+
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -1053,6 +1053,7 @@ static unsigned int shrink_folio_list(st
+ 	struct folio_batch free_folios;
+ 	LIST_HEAD(ret_folios);
+ 	LIST_HEAD(demote_folios);
++	LIST_HEAD(pageout_list);
+ 	unsigned int nr_reclaimed = 0, nr_demoted = 0;
+ 	unsigned int pgactivate = 0;
+ 	bool do_demote_pass;
+@@ -1380,52 +1381,9 @@ retry:
+ 			if (!sc->may_writepage)
+ 				goto keep_locked;
+ 
+-			/*
+-			 * Folio is dirty. Flush the TLB if a writable entry
+-			 * potentially exists to avoid CPU writes after I/O
+-			 * starts and then write it out here.
+-			 */
+-			try_to_unmap_flush_dirty();
+-			switch (pageout(folio, mapping, &plug, folio_list)) {
+-			case PAGE_KEEP:
+-				goto keep_locked;
+-			case PAGE_ACTIVATE:
+-				/*
+-				 * If shmem folio is split when writeback to swap,
+-				 * the tail pages will make their own pass through
+-				 * this function and be accounted then.
+-				 */
+-				if (nr_pages > 1 && !folio_test_large(folio)) {
+-					sc->nr_scanned -= (nr_pages - 1);
+-					nr_pages = 1;
+-				}
+-				goto activate_locked;
+-			case PAGE_SUCCESS:
+-				if (nr_pages > 1 && !folio_test_large(folio)) {
+-					sc->nr_scanned -= (nr_pages - 1);
+-					nr_pages = 1;
+-				}
+-				stat->nr_pageout += nr_pages;
+-
+-				if (folio_test_writeback(folio))
+-					goto keep;
+-				if (folio_test_dirty(folio))
+-					goto keep;
+-
+-				/*
+-				 * A synchronous write - probably a ramdisk.  Go
+-				 * ahead and try to reclaim the folio.
+-				 */
+-				if (!folio_trylock(folio))
+-					goto keep;
+-				if (folio_test_dirty(folio) ||
+-				    folio_test_writeback(folio))
+-					goto keep_locked;
+-				mapping = folio_mapping(folio);
+-				fallthrough;
+-			case PAGE_CLEAN:
+-				; /* try to free the folio below */
+-			}
++			/* Add to pageout list for defered bio submissions */
++			list_add(&folio->lru, &pageout_list);
++			continue;
+ 		}
+ 
+ 		/*
+@@ -1536,6 +1494,76 @@ keep:
+ 	}
+ 	/* 'folio_list' is always empty here */
+ 
++       if (!list_empty(&pageout_list)) {
++	       /*
++	       * Batch TLB flushes by flushing once before processing all dirty pages.
++	       * Since we operate on one PMD at a time, this batches TLB flushes at
++	       * PMD granularity rather than per-page, reducing IPIs.
++	       */
++	       struct address_space *mapping;
++	       try_to_unmap_flush_dirty();
++
++	       while (!list_empty(&pageout_list)) {
++		       struct folio *folio = lru_to_folio(&pageout_list);
++		       list_del(&folio->lru);
++
++		       /* Recheck if page got reactivated */
++		       if (folio_test_active(folio) ||
++			   (folio_mapped(folio) && folio_test_young(folio)))
++			       goto skip_pageout_locked;
++
++		       mapping = folio_mapping(folio);
++		       pageout_t pageout_res = pageout(folio, mapping, &plug, &pageout_list);
++		       switch (pageout_res) {
++		       case PAGE_KEEP:
++			       goto skip_pageout_locked;
++		       case PAGE_ACTIVATE:
++			       goto skip_pageout_locked;
++		       case PAGE_SUCCESS:
++			       stat->nr_pageout += folio_nr_pages(folio);
++
++			       if (folio_test_writeback(folio) ||
++				   folio_test_dirty(folio))
++				       goto skip_pageout;
++
++			       /*
++				* A synchronous write - probably a ramdisk.  Go
++				* ahead and try to reclaim the folio.
++				*/
++			       if (!folio_trylock(folio))
++				       goto skip_pageout;
++			       if (folio_test_dirty(folio) ||
++				   folio_test_writeback(folio))
++				       goto skip_pageout_locked;
++
++			       // Try to free the page
++			       if (!mapping ||
++				   !__remove_mapping(mapping, folio, true,
++						   sc->target_mem_cgroup))
++				       goto skip_pageout_locked;
++
++			       nr_reclaimed += folio_nr_pages(folio);
++			       folio_unlock(folio);
++			       continue;
++
++		       case PAGE_CLEAN:
++			       if (!mapping ||
++				   !__remove_mapping(mapping, folio, true,
++						   sc->target_mem_cgroup))
++				       goto skip_pageout_locked;
++
++			       nr_reclaimed += folio_nr_pages(folio);
++			       folio_unlock(folio);
++			       continue;
++		       }
++
++skip_pageout_locked:
++		       folio_unlock(folio);
++skip_pageout:
++		       list_add(&folio->lru, &ret_folios);
++	       }
++       }
++
+ 	/* Migrate folios selected for demotion */
+ 	nr_demoted = demote_folio_list(&demote_folios, pgdat);
+ 	nr_reclaimed += nr_demoted;

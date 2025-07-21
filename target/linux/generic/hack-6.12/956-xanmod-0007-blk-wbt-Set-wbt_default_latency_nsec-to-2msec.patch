@@ -1,0 +1,30 @@
+From 80e2bd58a4f13d1a946c6616e18d124b1291f2a7 Mon Sep 17 00:00:00 2001
+From: Alexandre Frade <kernel@xanmod.org>
+Date: Mon, 15 Jul 2024 04:50:34 +0000
+Subject: [PATCH 09/18] XANMOD: blk-wbt: Set wbt_default_latency_nsec() to
+ 2msec
+
+Signed-off-by: Alexandre Frade <kernel@xanmod.org>
+---
+ block/blk-wbt.c | 10 ++--------
+ 1 file changed, 2 insertions(+), 8 deletions(-)
+
+--- a/block/blk-wbt.c
++++ b/block/blk-wbt.c
+@@ -730,14 +730,8 @@ EXPORT_SYMBOL_GPL(wbt_enable_default);
+ 
+ u64 wbt_default_latency_nsec(struct request_queue *q)
+ {
+-	/*
+-	 * We default to 2msec for non-rotational storage, and 75msec
+-	 * for rotational storage.
+-	 */
+-	if (blk_queue_nonrot(q))
+-		return 2000000ULL;
+-	else
+-		return 75000000ULL;
++	/* XanMod defaults to 2msec for any type of storage */
++	return 2000000ULL;
+ }
+ 
+ static int wbt_data_dir(const struct request *rq)

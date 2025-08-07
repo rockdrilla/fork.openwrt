@@ -405,7 +405,7 @@ else
   DISABLE_IPV6:=--disable-ipv6
 endif
 
-TAR_OPTIONS:=-xf -
+TAR_OPTIONS:=--no-same-owner --no-same-permissions -xf -
 
 ifeq ($(CONFIG_BUILD_LOG),y)
   BUILD_LOG:=1

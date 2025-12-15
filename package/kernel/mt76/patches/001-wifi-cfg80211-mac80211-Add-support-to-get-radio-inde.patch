@@ -67,7 +67,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  	struct mt76_dev *dev = phy->dev;
 --- a/mt76.h
 +++ b/mt76.h
-@@ -1598,7 +1598,8 @@ int mt76_get_sar_power(struct mt76_phy *
+@@ -1609,7 +1609,8 @@ int mt76_get_sar_power(struct mt76_phy *
  void mt76_csa_check(struct mt76_dev *dev);
  void mt76_csa_finish(struct mt76_dev *dev);
  
@@ -239,7 +239,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  {
  	struct mt7915_dev *dev = mt7915_hw_dev(hw);
  	struct mt7915_phy *phy = mt7915_hw_phy(hw);
-@@ -913,7 +914,8 @@ static void mt7915_tx(struct ieee80211_h
+@@ -934,7 +935,8 @@ static void mt7915_tx(struct ieee80211_h
  	mt76_tx(mphy, control->sta, wcid, skb);
  }
  
@@ -249,7 +249,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  {
  	struct mt7915_dev *dev = mt7915_hw_dev(hw);
  	struct mt7915_phy *phy = mt7915_hw_phy(hw);
-@@ -1109,7 +1111,8 @@ mt7915_offset_tsf(struct ieee80211_hw *h
+@@ -1130,7 +1132,8 @@ mt7915_offset_tsf(struct ieee80211_hw *h
  }
  
  static void
@@ -259,7 +259,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  {
  	struct mt7915_phy *phy = mt7915_hw_phy(hw);
  	struct mt7915_dev *dev = phy->dev;
-@@ -1121,7 +1124,7 @@ mt7915_set_coverage_class(struct ieee802
+@@ -1142,7 +1145,7 @@ mt7915_set_coverage_class(struct ieee802
  }
  
  static int
@@ -268,7 +268,7 @@ Signed-off-by: Johannes Berg <johannes.berg@intel.com>
  {
  	struct mt7915_dev *dev = mt7915_hw_dev(hw);
  	struct mt7915_phy *phy = mt7915_hw_phy(hw);
-@@ -1699,7 +1702,7 @@ mt7915_twt_teardown_request(struct ieee8
+@@ -1727,7 +1730,7 @@ mt7915_twt_teardown_request(struct ieee8
  }
  
  static int

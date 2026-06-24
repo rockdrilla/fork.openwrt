@@ -1,0 +1,13 @@
+--- a/Makefile
++++ b/Makefile
+@@ -888,6 +888,10 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
+ KBUILD_CFLAGS += $(call cc-option,-fmodulo-sched -fmodulo-sched-allow-regmoves)
+ endif
+ 
++ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
++KBUILD_CFLAGS += $(call cc-option,-fivopts -fipa-reorder-for-locality -fipa-pta -fipa-icf -fno-tree-vectorize -fno-tree-loop-vectorize -fno-tree-slp-vectorize -fno-tree-loop-distribute-patterns -fno-tree-loop-distribution)
++endif
++
+ # Always set `debug-assertions` and `overflow-checks` because their default
+ # depends on `opt-level` and `debug-assertions`, respectively.
+ KBUILD_RUSTFLAGS += -Cdebug-assertions=$(if $(CONFIG_RUST_DEBUG_ASSERTIONS),y,n)

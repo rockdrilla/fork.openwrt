@@ -196,8 +196,8 @@ generate_network() {
 		pppoe)
 			uci -q batch <<-EOF
 				set network.$1.proto='pppoe'
-				set network.$1.username='username'
-				set network.$1.password='password'
+				set network.$1.username='rtk'
+				set network.$1.password='rtk'
 			EOF
 			[ -e /proc/sys/net/ipv6 ] && {
 				uci -q batch <<-EOF
@@ -206,6 +206,7 @@ generate_network() {
 					set network.${1}6='interface'
 					set network.${1}6.device='@${1}'
 					set network.${1}6.proto='dhcpv6'
+					set network.${1}6.enabled='0'
 				EOF
 			}
 		;;

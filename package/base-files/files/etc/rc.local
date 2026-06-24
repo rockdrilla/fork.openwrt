@@ -1,4 +1,14 @@
-# Put your custom commands here that should be executed once
-# the system init finished. By default this file does nothing.
+#!/bin/sh
+
+set +e ; set -f
+
+if [ -d /etc/boot.d ] ; then
+	find /etc/boot.d/ -mindepth 1 -maxdepth 1 -type f | sort -V \
+	| while read -r f ; do
+		[ -x "$f" ] || continue
+		printf '# executing %s\n' "$f" >&2
+		"$f"
+	done
+fi
 
 exit 0

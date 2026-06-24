@@ -1,0 +1,10 @@
+--- a/bridge/mdb.c
++++ b/bridge/mdb.c
+@@ -21,6 +21,7 @@
+ #include "br_common.h"
+ #include "rt_names.h"
+ #include "json_print.h"
++#include <limits.h>
+ 
+ #ifndef MDBA_RTA
+ #define MDBA_RTA(r) \

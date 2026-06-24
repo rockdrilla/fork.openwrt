@@ -53,6 +53,7 @@ HOST_CONFIGURE_ARGS = \
 	--enable-serial-configure \
 	--enable-obsolete \
 	--enable-deterministic-archives \
+	$(if $(findstring mips,$(ARCH)),,--enable-default-hash-style=gnu) \
 	--enable-plugins \
 	--enable-lto \
 	--disable-werror \
